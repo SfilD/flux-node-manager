@@ -41,6 +41,13 @@ npm start
 
 This will launch the Electron window and load the Flux login page. You must log in to the Flux web interface to initiate the automated monitoring and deletion process.
 
+### Development Workflow
+
+- **Development Environment:** Code is written and edited within the WSL (Windows Subsystem for Linux) environment, specifically the **Ubuntu-22.04** distribution.
+- **Testing & Execution Environment:** For testing and final execution, the project files are copied to a **Windows 10 Pro** VMware virtual machine.
+- **Working Directory on Windows:** The project is located at `C:\Projects\flux-auto-deleter\` on the Windows VM.
+- **Critical Constraint:** All runtime and testing commands (e.g., `npm start`) **must be executed within the Windows 10 Pro environment**, not in WSL. This context is crucial for any file operations, command executions, or debugging tasks.
+
 ## Development Conventions
 
 *   **Authentication:** The application relies on capturing the `zelidauth` token from the Flux web interface's `localStorage`.
