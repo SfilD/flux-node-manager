@@ -1,0 +1,17 @@
+{
+  "name": "flux-session-monitor",
+  "version": "1.0.0",
+  "description": "A simple Electron app to monitor web session data.",
+  "main": "monitor-main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "Gemini",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^39.0.0"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  }
+}

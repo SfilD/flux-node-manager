@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Flux App Deleter</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        button { margin: 5px; padding: 10px; }
+        input { margin: 5px; padding: 10px; width: 200px; }
+        #apps-list { margin-top: 20px; border: 1px solid #ccc; padding: 10px; }
+        pre { background-color: #f4f4f4; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Flux App Manager</h1>
+        <p>Login via the web interface first. Once logged in, you can use the controls below.</p>
+        
+        <button id="list-apps-btn">List Running Apps</button>
+        
+        <hr>
+        
+        <div>
+            <input type="text" id="app-name-input" placeholder="Enter App Name">
+            <button id="get-specs-btn">Get Specs</button>
+            <button id="remove-app-btn">Remove App</button>
+        </div>
+        
+        <hr>
+        
+        <h2>Results:</h2>
+        <pre id="results-output">(Results will be shown here)</pre>
+    </div>
+
+    <script>
+        const listAppsBtn = document.getElementById('list-apps-btn');
+        const getSpecsBtn = document.getElementById('get-specs-btn');
+        const removeAppBtn = document.getElementById('remove-app-btn');
+        const appNameInput = document.getElementById('app-name-input');
+        const resultsOutput = document.getElementById('results-output');
+
+        function displayResult(data) {
+            resultsOutput.textContent = JSON.stringify(data, null, 2);
+        }
+
+        listAppsBtn.addEventListener('click', async () => {
+            resultsOutput.textContent = 'Loading...';
+            const apps = await window.electron.listApps();
+            displayResult(apps);
+        });
+
+        getSpecsBtn.addEventListener('click', async () => {
+            const appName = appNameInput.value;
+            if (!appName) {
+                displayResult({ error: 'Please enter an app name.' });
+                return;
+            }
+            resultsOutput.textContent = 'Loading...';
+            const specs = await window.electron.getSpecs(appName);
+            displayResult(specs);
+        });
+
+        removeAppBtn.addEventListener('click', async () => {
+            const appName = appNameInput.value;
+            if (!appName) {
+                displayResult({ error: 'Please enter an app name.' });
+                return;
+            }
+            if (confirm(`Are you sure you want to remove the app "${appName}"?`)) {
+                resultsOutput.textContent = 'Loading...';
+                const result = await window.electron.removeApp(appName);
+                displayResult(result);
+            }
+        });
+    </script>
+</body>
+</html>
