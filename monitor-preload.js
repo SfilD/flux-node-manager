@@ -17,7 +17,17 @@ if (debugModeArg) {
 // --- Debug Utility ---
 function log() {
   if (DEBUG) {
-    const args = [`[MONITOR-${nodeId}]`];
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    
+    const timestamp = `[${day}.${month}.${year} ${hours}:${minutes}]`;
+    const prefix = `[MONITOR-${nodeId}]`;
+    
+    const args = [prefix + timestamp];
     for (let i = 0; i < arguments.length; i++) {
       args.push(arguments[i]);
     }
@@ -27,38 +37,36 @@ function log() {
 
 function logState(context) {
     if (!DEBUG) return;
-    console.log(`
------ [${context} - ${nodeId}] -----`);
-    console.log('Timestamp:', new Date().toISOString());
+    log(`----- [${context}] -----`);
+    log('Timestamp:', new Date().toISOString());
 
-    console.log('\n--- localStorage ---');
+    log('\n--- localStorage ---');
     try {
         const ls = {};
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             ls[key] = localStorage.getItem(key);
         }
-        console.log(JSON.stringify(ls, null, 2));
+        log(JSON.stringify(ls, null, 2));
     } catch (e) {
-        console.log(`Error reading localStorage: ${e.message}`);
+        log(`Error reading localStorage: ${e.message}`);
     }
 
-    console.log('\n--- sessionStorage ---');
+    log('\n--- sessionStorage ---');
     try {
         const ss = {};
         for (let i = 0; i < sessionStorage.length; i++) {
             const key = sessionStorage.key(i);
             ss[key] = sessionStorage.getItem(key);
         }
-        console.log(JSON.stringify(ss, null, 2));
+        log(JSON.stringify(ss, null, 2));
     } catch (e) {
-        console.log(`Error reading sessionStorage: ${e.message}`);
+        log(`Error reading sessionStorage: ${e.message}`);
     }
 
-    console.log('\n--- Cookies ---');
-    console.log(document.cookie || '(empty)');
-    console.log(`----- End of [${context} - ${nodeId}] -----
-`);
+    log('\n--- Cookies ---');
+    log(document.cookie || '(empty)');
+    log(`----- End of [${context}] -----`);
 }
 
 

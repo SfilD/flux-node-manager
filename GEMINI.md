@@ -55,3 +55,11 @@ This will launch an Electron window for each configured node. You must log in to
 - **Testing & Execution Environment:** For testing and final execution, the project files are copied to a **Windows 10 Pro** VMware virtual machine.
 - **Working Directory on Windows:** The project is located at `C:\Projects\flux-auto-deleter\` on the Windows VM.
 - **Critical Constraint:** All runtime and testing commands (e.g., `npm start`) **must be executed within the Windows 10 Pro environment**, not in WSL. This context is crucial for any file operations, command executions, or debugging tasks.
+
+## Logging Conventions
+
+Log messages are formatted to include a prefix and a timestamp for clarity: `[PREFIX][DD.MM.YYYY HH:MM] Message...`
+- **[MAIN-nodeID]**: High-level events related to application control (login/logout, starting/stopping automation).
+- **[AUTO-nodeID]**: Events related to the automation cycle itself (checking apps, listing found apps).
+- **[API-nodeID]**: Events related to direct API calls (listing apps, removing apps).
+- **[MONITOR-nodeID]**: Events from the preload script running in the browser context.

@@ -34,6 +34,24 @@ const NODES = Object.keys(config)
 
 // --- Function Definitions ---
 
+function log(prefix, ...args) {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+  const year = now.getFullYear();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  
+  const timestamp = `[${day}.${month}.${year} ${hours}:${minutes}]`;
+  
+  // Use console.error for prefixes containing 'error'
+  if (prefix.toLowerCase().includes('error')) {
+    console.error(`[${prefix}]${timestamp}`, ...args);
+  } else {
+    console.log(`[${prefix}]${timestamp}`, ...args);
+  }
+}
+
 function createWindow(node) {
   const win = new BrowserWindow({
     width: WINDOW_WIDTH,
@@ -58,7 +76,7 @@ function createWindow(node) {
 
 async function listRunningApps(node) {
     if (!node.token) {
-        console.log(`[API-${node.id}] Error: Not logged in. Token is missing.`);
+        log(`API-${node.id}`, 'Error: Not logged in. Token is missing.');
         return null;
     }
     try {
@@ -68,18 +86,18 @@ async function listRunningApps(node) {
         });
         const data = await response.json();
         if (DEBUG_MODE) {
-          console.log(`[API-${node.id}] Running Apps:`, JSON.stringify(data, null, 2));
+          log(`API-${node.id}`, 'Running Apps:', JSON.stringify(data, null, 2));
         }
         return data;
     } catch (error) {
-        console.error(`[API-${node.id}] Error listing running apps:`, error);
+        log(`API-${node.id}-Error`, 'Error listing running apps:', error);
         return null;
     }
 }
 
 async function removeApp(node, appName) {
     if (!node.token) {
-        console.log(`[API-${node.id}] Error: Not logged in. Token is missing.`);
+        log(`API-${node.id}`, 'Error: Not logged in. Token is missing.');
         return null;
     }
     try {
@@ -90,18 +108,40 @@ async function removeApp(node, appName) {
         // Return the full response object for status checking
         return response;
     } catch (error) {
-        console.error(`[API-${node.id}] Error removing app ${appName}:`, error);
+        log(`API-${node.id}-Error`, `Error removing app ${appName}:`, error);
         return null;
     }
 }
 
 async function runAutomationCycle(node) {
-  console.log(`[AUTOMATION-${node.id}] Cycle started.`);
+  log(`AUTO-${node.id}`, 'Cycle started.');
 
-  console.log(`[AUTOMATION-${node.id}] Checking for target applications to remove...`);
+  log(`AUTO-${node.id}`, 'Checking for target applications to remove...');
   const appsResponse = await listRunningApps(node);
 
   if (appsResponse && appsResponse.status === 'success' && appsResponse.data) {
+    // Unconditional minimalistic logging
+    log(`AUTO-${node.id}`, `Found ${appsResponse.data.length} running applications:`);
+    const appNames = appsResponse.data.map(app => {
+        if (app.Names && app.Names.length > 0) {
+            let containerName = app.Names[0];
+            if (containerName.startsWith('/')) {
+                return containerName.substring(1);
+            }
+            return containerName;
+        }
+        return null;
+    }).filter(name => name !== null);
+
+    appNames.forEach(name => {
+        log(`AUTO-${node.id}`, `  - ${name}`);
+    });
+
+    // Conditional detailed logging for debug mode
+    if (DEBUG_MODE) {
+        log(`AUTO-${node.id}`, 'Raw application data:', JSON.stringify(appsResponse.data, null, 2));
+    }
+
     for (const app of appsResponse.data) {
       if (app.Names && app.Names.length > 0) {
         let containerName = app.Names[0];
@@ -111,14 +151,14 @@ async function runAutomationCycle(node) {
         const prefixMatch = TARGET_APP_PREFIXES.find(prefix => containerName.includes(prefix));
         if (prefixMatch) {
           const mainAppName = containerName.substring(containerName.lastIndexOf('_') + 1);
-          console.log(`[AUTOMATION-${node.id}] Found target app component: ${containerName} (prefix: ${prefixMatch}). Attempting to remove main app: ${mainAppName}...`);
+          log(`AUTO-${node.id}`, `Found target app component: ${containerName} (prefix: ${prefixMatch}). Attempting to remove main app: ${mainAppName}...`);
           
           const removeResponse = await removeApp(node, mainAppName);
 
           if (removeResponse && !removeResponse.ok) {
             // Reactive Auth Check: If removeApp failed due to authentication, pause automation
             if (removeResponse.status === 401 || removeResponse.status === 403) {
-              console.log(`[MAIN-${node.id}] Authentication failed during removeApp. Token is invalid. Pausing automation.`);
+              log(`MAIN-${node.id}`, 'Authentication failed during removeApp. Token is invalid. Pausing automation.');
               clearInterval(node.automationIntervalId);
               node.automationIntervalId = null;
               node.token = null;
@@ -127,7 +167,7 @@ async function runAutomationCycle(node) {
           } else if (removeResponse && removeResponse.ok) {
              if (DEBUG_MODE) {
                 const responseText = await removeResponse.text();
-                console.log(`[API-${node.id}] Raw remove response for ${mainAppName}:`, responseText);
+                log(`API-${node.id}`, `Raw remove response for ${mainAppName}:`, responseText);
                 try {
                     const jsonStrings = responseText.split('}{');
                     const parsedObjects = [];
@@ -144,18 +184,18 @@ async function runAutomationCycle(node) {
                         try {
                             const data = JSON.parse(currentJson);
                             parsedObjects.push(data);
-                            console.log(`[API-${node.id}] Parsed step ${parsedObjects.length} for ${mainAppName}:`, JSON.stringify(data, null, 2));
+                            log(`API-${node.id}`, `Parsed step ${parsedObjects.length} for ${mainAppName}:`, JSON.stringify(data, null, 2));
                         } catch (parseError) {
-                            console.error(`[API-${node.id}] Failed to parse step ${index + 1} of remove response for ${mainAppName}. Error: ${parseError.message}. Part: ${currentJson}`);
+                            log(`API-${node.id}-Error`, `Failed to parse step ${index + 1} of remove response for ${mainAppName}. Error: ${parseError.message}. Part: ${currentJson}`);
                         }
                     });
 
                     if (parsedObjects.length > 0) {
-                        console.log(`[API-${node.id}] Final status for ${mainAppName}:`, JSON.stringify(parsedObjects[parsedObjects.length - 1], null, 2));
+                        log(`API-${node.id}`, `Final status for ${mainAppName}:`, JSON.stringify(parsedObjects[parsedObjects.length - 1], null, 2));
                     }
 
                 } catch (e) {
-                    console.error(`[API-${node.id}] General error processing remove response for ${mainAppName}. Error: ${e.message}`);
+                    log(`API-${node.id}-Error`, `General error processing remove response for ${mainAppName}. Error: ${e.message}`);
                 }
              } else {
                 // Still need to consume the response body, even if not logging
@@ -166,7 +206,7 @@ async function runAutomationCycle(node) {
       }
     }
   } else if (node.token) {
-    console.log(`[AUTOMATION-${node.id}] Could not retrieve running apps. API might be down.`);
+    log(`AUTO-${node.id}`, 'Could not retrieve running apps. API might be down.');
   }
 }
 
@@ -181,22 +221,22 @@ app.whenReady().then(() => {
     if (!node) return;
 
     if (authState.loggedIn) {
-      console.log(`[MAIN-${node.id}] Received LOGIN notification.`);
+      log(`MAIN-${node.id}`, 'Received LOGIN notification.');
       node.token = authState.token;
       if (!node.automationIntervalId) {
-        console.log(`[MAIN-${node.id}] Starting automation in 5 seconds...`);
+        log(`MAIN-${node.id}`, 'Starting automation in 5 seconds...');
         // Add a delay to prevent a race condition on new session validation
         setTimeout(() => {
-          console.log(`[MAIN-${node.id}] Initial automation cycle starting now.`);
+          log(`MAIN-${node.id}`, 'Initial automation cycle starting now.');
           runAutomationCycle(node); // Run immediately after delay
           node.automationIntervalId = setInterval(() => runAutomationCycle(node), AUTOMATION_INTERVAL); // Then run at configured interval
         }, 5000); // 5-second delay
       }
     } else {
-      console.log(`[MAIN-${node.id}] Received LOGOUT notification.`);
+      log(`MAIN-${node.id}`, 'Received LOGOUT notification.');
       node.token = null;
       if (node.automationIntervalId) {
-        console.log(`[MAIN-${node.id}] Stopping automation...`);
+        log(`MAIN-${node.id}`, 'Stopping automation...');
         clearInterval(node.automationIntervalId);
         node.automationIntervalId = null;
       }
