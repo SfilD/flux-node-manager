@@ -10,6 +10,7 @@ app.disableHardwareAcceleration();
 // --- Load Configuration from settings.ini ---
 const config = ini.parse(fs.readFileSync(path.join(__dirname, 'settings.ini'), 'utf-8'));
 
+const SCAN_IP = config.General.ScanIP;
 const TARGET_APP_PREFIXES = (config.General.TargetAppPrefixes || '').split(',').map(p => p.trim()).filter(p => p.length > 0);
 const AUTOMATION_INTERVAL = (parseInt(config.General.AutomationIntervalSeconds) || 60) * 1000;
 const DEBUG_MODE = String(config.General.Debug).toLowerCase() === 'true';
@@ -20,24 +21,7 @@ const TABS_HEIGHT = 41; // Height of the tab bar
 // --- Global State ---
 let mainWindow = null;
 let activeViewId = null;
-
-// --- Build Node Configuration from settings.ini ---
-const NODES = Object.keys(config)
-  .filter(key => key.startsWith('Node'))
-  .map(key => {
-    const nodeConfig = config[key];
-    const number = key.replace('Node', ''); // "1", "2", "10" etc.
-    const paddedNumber = number.padStart(2, '0'); // "01", "02", "10"
-    return {
-      id: `node${paddedNumber}`, // "node01", "node02", "node10"
-      name: nodeConfig.Name,
-      uiUrl: nodeConfig.UI_URL,
-      apiUrl: nodeConfig.API_URL,
-      view: null, // Will hold the BrowserView
-      token: null,
-      automationIntervalId: null
-    };
-  });
+let NODES = []; // This will be populated dynamically
 
 // --- Function Definitions ---
 
@@ -51,13 +35,72 @@ function log(prefix, ...args) {
   
   const timestamp = `[${day}.${month}.${year} ${hours}:${minutes}]`;
   
-  // Use console.error for prefixes containing 'error'
   if (prefix.toLowerCase().includes('error')) {
     console.error(`${timestamp}[${prefix}]`, ...args);
   } else {
     console.log(`${timestamp}[${prefix}]`, ...args);
   }
 }
+
+/**
+ * Checks if a Flux API is responsive at a given URL.
+ * @param {string} apiUrl The API URL to check.
+ * @returns {Promise<boolean>} True if the node API is responsive, false otherwise.
+ */
+async function checkFluxNodeExistence(apiUrl) {
+    try {
+        const response = await fetch(`${apiUrl}/apps/listrunningapps`, {
+            method: 'GET',
+            timeout: 10000 // 10-second timeout for slower nodes
+        });
+        // We consider any response (even 401 Unauthorized) as proof of existence.
+        // We only care about catching network errors.
+        return true;
+    } catch (error) {
+        // Network errors mean the node is not there or not reachable.
+        return false;
+    }
+}
+
+/**
+ * Scans the configured IP for active Flux nodes based on the port scheme.
+ * @param {string} ip The IP address to scan.
+ * @returns {Promise<Array>} A list of discovered node objects.
+ */
+async function discoverNodes(ip) {
+    log('DISCOVERY', `Starting node discovery on IP: ${ip}`);
+    const discoveredNodes = [];
+    const baseUiPort = 16126;
+    const maxNodesPerIp = 8;
+
+    for (let i = 0; i < maxNodesPerIp; i++) {
+        const uiPort = baseUiPort + (i * 10);
+        const apiPort = uiPort + 1;
+        const apiUrl = `http://${ip}:${apiPort}`;
+        
+        log('DISCOVERY', `Checking for node at ${apiUrl}...`);
+        const exists = await checkFluxNodeExistence(apiUrl);
+
+        if (exists) {
+            const nodeNumber = i + 1;
+            const paddedNumber = String(nodeNumber).padStart(2, '0');
+            const node = {
+                id: `node${paddedNumber}`,
+                name: `Node${paddedNumber}`,
+                uiUrl: `http://${ip}:${uiPort}`,
+                apiUrl: apiUrl,
+                view: null,
+                token: null,
+                automationIntervalId: null
+            };
+            discoveredNodes.push(node);
+            log('DISCOVERY', `Found active node: ${node.name} at ${node.apiUrl}`);
+        }
+    }
+    log('DISCOVERY', `Discovery complete. Found ${discoveredNodes.length} active nodes.`);
+    return discoveredNodes;
+}
+
 
 async function listRunningApps(node) {
     if (!node.token) {
@@ -90,7 +133,6 @@ async function removeApp(node, appName) {
             method: 'GET',
             headers: { 'zelidauth': node.token }
         });
-        // Return the full response object for status checking
         return response;
     } catch (error) {
         log(`API-${node.id}-Error`, `Error removing app ${appName}:`, error);
@@ -100,12 +142,10 @@ async function removeApp(node, appName) {
 
 async function runAutomationCycle(node) {
   log(`AUTO-${node.id}`, 'Cycle started.');
-
   log(`AUTO-${node.id}`, 'Checking for target applications to remove...');
   const appsResponse = await listRunningApps(node);
 
   if (appsResponse && appsResponse.status === 'success' && appsResponse.data) {
-    // Unconditional minimalistic logging
     log(`AUTO-${node.id}`, `Found ${appsResponse.data.length} running applications:`);
     const appNames = appsResponse.data.map(app => {
         if (app.Names && app.Names.length > 0) {
@@ -122,7 +162,6 @@ async function runAutomationCycle(node) {
         log(`AUTO-${node.id}`, `  - ${name}`);
     });
 
-    // Conditional detailed logging for debug mode
     if (DEBUG_MODE) {
         log(`AUTO-${node.id}`, 'Raw application data:', JSON.stringify(appsResponse.data, null, 2));
     }
@@ -141,13 +180,12 @@ async function runAutomationCycle(node) {
           const removeResponse = await removeApp(node, mainAppName);
 
           if (removeResponse && !removeResponse.ok) {
-            // Reactive Auth Check: If removeApp failed due to authentication, pause automation
             if (removeResponse.status === 401 || removeResponse.status === 403) {
               log(`MAIN-${node.id}`, 'Authentication failed during removeApp. Token is invalid. Pausing automation.');
               clearInterval(node.automationIntervalId);
               node.automationIntervalId = null;
               node.token = null;
-              break; // Stop processing other apps this cycle, as token is bad
+              break;
             }
           } else if (removeResponse && removeResponse.ok) {
              if (DEBUG_MODE) {
@@ -156,16 +194,10 @@ async function runAutomationCycle(node) {
                 try {
                     const jsonStrings = responseText.split('}{');
                     const parsedObjects = [];
-
                     jsonStrings.forEach((jsonStr, index) => {
                         let currentJson = jsonStr;
-                        if (index > 0) { // All parts except the first need an opening brace
-                            currentJson = '{' + currentJson;
-                        }
-                        if (index < jsonStrings.length - 1) { // All parts except the last need a closing brace
-                            currentJson = currentJson + '}';
-                        }
-
+                        if (index > 0) { currentJson = '{' + currentJson; }
+                        if (index < jsonStrings.length - 1) { currentJson = currentJson + '}'; }
                         try {
                             const data = JSON.parse(currentJson);
                             parsedObjects.push(data);
@@ -174,16 +206,13 @@ async function runAutomationCycle(node) {
                             log(`API-${node.id}-Error`, `Failed to parse step ${index + 1} of remove response for ${mainAppName}. Error: ${parseError.message}. Part: ${currentJson}`);
                         }
                     });
-
                     if (parsedObjects.length > 0) {
                         log(`API-${node.id}`, `Final status for ${mainAppName}:`, JSON.stringify(parsedObjects[parsedObjects.length - 1], null, 2));
                     }
-
                 } catch (e) {
                     log(`API-${node.id}-Error`, `General error processing remove response for ${mainAppName}. Error: ${e.message}`);
                 }
              } else {
-                // Still need to consume the response body, even if not logging
                 await removeResponse.text();
              }
           }
@@ -195,13 +224,22 @@ async function runAutomationCycle(node) {
   }
 }
 
-function createApp() {
+async function createApp() {
+    // Discover nodes before creating any windows
+    NODES = await discoverNodes(SCAN_IP);
+
+    if (NODES.length === 0) {
+        log('MAIN-Error', 'No active Flux nodes found on the specified IP. Shutting down.');
+        app.quit();
+        return;
+    }
+
     mainWindow = new BrowserWindow({
         width: WINDOW_WIDTH,
         height: WINDOW_HEIGHT,
         webPreferences: {
-            nodeIntegration: true, // Enable Node.js integration in the renderer
-            contextIsolation: false // Disable context isolation
+            nodeIntegration: true,
+            contextIsolation: false
         }
     });
 
@@ -218,12 +256,10 @@ function createApp() {
         });
     });
 
-    // Create a BrowserView for each node
     NODES.forEach(node => {
         const view = new BrowserView({
             webPreferences: {
                 preload: path.join(__dirname, 'monitor-preload.js'),
-                // Use a persistent partition to isolate sessions
                 partition: `persist:${node.id}`,
                 additionalArguments: [`--node-id=${node.id}`, `--debug-mode=${DEBUG_MODE}`],
                 sandbox: false
@@ -235,16 +271,12 @@ function createApp() {
         view.setAutoResize({ width: true, height: true });
         view.webContents.loadURL(node.uiUrl);
 
-        // Open DevTools for the view if in debug mode
         if (DEBUG_MODE) {
             view.webContents.openDevTools({ mode: 'detach' });
         }
-
-        // Store the view reference
         node.view = view;
     });
 
-    // Explicitly set the first node's view as the top one after all views are created
     if (NODES.length > 0) {
         mainWindow.setTopBrowserView(NODES[0].view);
         activeViewId = NODES[0].id;
