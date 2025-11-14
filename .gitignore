@@ -35,3 +35,6 @@ config.js.local
 *.deb
 *.rpm
 *.snap
+
+# Backup files
+*.bak_*

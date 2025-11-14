@@ -193,6 +193,8 @@ async function runAutomationCycle(node) {
         }
         const prefixMatch = TARGET_APP_PREFIXES.find(prefix => containerName.includes(prefix));
         if (prefixMatch) {
+          // Correctly extract the main app name, which is the part before the first underscore.
+          // const mainAppName = containerName.split('_')[0];
           const mainAppName = containerName.substring(containerName.lastIndexOf('_') + 1);
           log(`AUTO-${node.id}`, `Found target app component: ${containerName} (prefix: ${prefixMatch}). Attempting to remove main app: ${mainAppName}...`);
           
