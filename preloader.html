@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Starting...</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #1a202c;
+            color: #a0aec0;
+            border: 1px solid #4a5568;
+            font-family: monospace; /* Default, will be overridden */
+        }
+        .wrapper {
+            padding: 15px;
+            box-sizing: border-box;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        h1 {
+            font-size: 1em; /* Override browser default of 2em to match body font size */
+            font-weight: normal; /* Override browser default bold */
+            color: #f7fafc;
+            margin: 0 0 10px 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #4a5568;
+        }
+        #log-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            /* font-size will be inherited from body */
+        }
+        #log-container p {
+            margin: 0 0 5px 0;
+            padding: 0;
+            word-break: break-all;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a202c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <h1>Discovering Flux Nodes...</h1>
+        <div id="log-container"></div>
+    </div>
+    <script src="preloader-renderer.js"></script>
+</body>
+</html>

@@ -19,38 +19,88 @@ const AUTOMATION_INTERVAL = (parseInt(config.General.AutomationIntervalSeconds) 
 const DEBUG_MODE = String(config.General.Debug).toLowerCase() === 'true';
 const WINDOW_WIDTH = parseInt(config.General.WindowWidth) || 1200;
 const WINDOW_HEIGHT = parseInt(config.General.WindowHeight) || 800;
-const TABS_WIDTH = 220; // Width of the vertical tab bar
+const LOG_CLEAR_ON_START = String(config.General.LogClearOnStart).toLowerCase() === 'true';
+const LOG_FILE = config.General.LogFile || 'session.log';
+const FONT_NAME = config.General.FontName || 'Hack';
+const FONT_SIZE = parseInt(config.General.FontSize) || 10;
 
 // --- Global State ---
+let preloaderWindow = null;
 let mainWindow = null;
 let activeViewId = null;
 let NODES = []; // This will be populated dynamically
+let logStream = null; // For file logging
+let logHistory = []; // Persistent log history for the session
 
-// --- Function Definitions ---
+// --- Logging System ---
 
-function log(prefix, ...args) {
-  const now = new Date();
-  const day = String(now.getDate()).padStart(2, '0');
-  const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
-  const year = now.getFullYear();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  
-  const timestamp = `[${day}.${month}.${year} ${hours}:${minutes}]`;
-  
-  if (prefix.toLowerCase().includes('error')) {
-    console.error(`${timestamp}[${prefix}]`, ...args);
-  } else {
-    console.log(`${timestamp}[${prefix}]`, ...args);
-  }
+function setupFileLogger() {
+    const logFilePath = path.join(__dirname, LOG_FILE);
+    const writeMode = LOG_CLEAR_ON_START ? 'w' : 'a';
+    try {
+        logStream = fs.createWriteStream(logFilePath, { flags: writeMode });
+        logStream.on('error', (err) => {
+            console.error('Log stream error:', err);
+            logStream = null;
+        });
+    } catch (err) {
+        console.error('Failed to setup file logger:', err);
+    }
 }
+
+// Central dispatcher for all log messages
+function dispatchLog(message, isDebug = false) {
+    if (isDebug && !DEBUG_MODE) {
+        return;
+    }
+    
+    logHistory.push(message);
+
+    // 1. Send to the active UI
+    const targetWindow = preloaderWindow || mainWindow;
+    if (targetWindow && !targetWindow.isDestroyed()) {
+        targetWindow.webContents.send('log-message', message);
+    }
+    
+    // 2. Write to file
+    if (logStream) {
+        logStream.write(`[${new Date().toISOString()}] ${message}\n`);
+    }
+}
+
+// Standard-level log
+function log(prefix, ...args) {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const timestamp = `[${day}.${month}.${year} ${hours}:${minutes}]`;
+    
+    const message = `${timestamp}[${prefix}] ${args.map(arg => (typeof arg === 'object' && arg !== null) ? JSON.stringify(arg) : String(arg)).join(' ')}`;
+    dispatchLog(message, false);
+}
+
+// Debug-level log
+function logDebug(prefix, ...args) {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const timestamp = `[${day}.${month}.${year} ${hours}:${minutes}]`;
+
+    const message = `${timestamp}[${prefix}] ${args.map(arg => (typeof arg === 'object' && arg !== null) ? JSON.stringify(arg, null, 2) : String(arg)).join(' ')}`;
+    dispatchLog(message, true);
+}
+
+// --- Application Lifecycle Functions ---
 
 async function checkFluxNodeExistence(apiUrl) {
     try {
-        const response = await fetch(`${apiUrl}/apps/listrunningapps`, {
-            method: 'GET',
-            timeout: 10000 // 10-second timeout for slower nodes
-        });
+        await fetch(`${apiUrl}/apps/listrunningapps`, { method: 'GET', timeout: 10000 });
         return true;
     } catch (error) {
         return false;
@@ -69,12 +119,10 @@ async function discoverNodesOnIp(ip, ipPrefix) {
         const apiUrl = `http://${ip}:${apiPort}`;
         
         log('DISCOVERY', `Checking for node at ${apiUrl}...`);
-        const exists = await checkFluxNodeExistence(apiUrl);
-
-        if (exists) {
+        if (await checkFluxNodeExistence(apiUrl)) {
             const nodeNumber = i + 1;
             const paddedNodeNumber = String(nodeNumber).padStart(2, '0');
-            const node = {
+            discoveredNodes.push({
                 id: `${ipPrefix}-node${paddedNodeNumber}`,
                 name: `${ipPrefix}-Node${paddedNodeNumber}`,
                 uiUrl: `http://${ip}:${uiPort}`,
@@ -82,9 +130,8 @@ async function discoverNodesOnIp(ip, ipPrefix) {
                 view: null,
                 token: null,
                 automationIntervalId: null
-            };
-            discoveredNodes.push(node);
-            log('DISCOVERY', `Found active node: ${node.name} at ${node.apiUrl}`);
+            });
+            log('DISCOVERY', `Found active node: ${ipPrefix}-Node${paddedNodeNumber}`);
         }
     }
     return discoveredNodes;
@@ -94,12 +141,10 @@ async function discoverAllNodes(ips) {
     log('DISCOVERY', 'Starting node discovery across all IPs...');
     let allFoundNodes = [];
     for (let i = 0; i < ips.length; i++) {
-        const ip = ips[i];
-        const ipPrefix = `IP${String(i + 1).padStart(2, '0')}`;
-        const nodesOnThisIp = await discoverNodesOnIp(ip, ipPrefix);
+        const nodesOnThisIp = await discoverNodesOnIp(ips[i], `IP${String(i + 1).padStart(2, '0')}`);
         allFoundNodes = allFoundNodes.concat(nodesOnThisIp);
     }
-    NODES = allFoundNodes; // Update the global NODES array
+    NODES = allFoundNodes;
     log('DISCOVERY', `Total nodes found across all IPs: ${NODES.length}`);
 }
 
@@ -107,13 +152,9 @@ async function clearAllCaches() {
     log('CACHE', 'Starting to clear all session caches...');
     for (const node of NODES) {
         try {
-            const partition = `persist:${node.id}`;
-            const ses = session.fromPartition(partition);
-            // Clear specific storage types to avoid wiping login data (cookies, localStorage)
-            await ses.clearStorageData({
-                storages: ['appcache', 'cachestorage', 'shadercache']
-            });
-            log('CACHE', `Successfully cleared cache for partition: ${partition}`);
+            const ses = session.fromPartition(`persist:${node.id}`);
+            await ses.clearStorageData({ storages: ['appcache', 'cachestorage', 'shadercache'] });
+            log('CACHE', `Successfully cleared cache for partition: ${node.id}`);
         } catch (error) {
             log('CACHE-Error', `Failed to clear cache for node ${node.id}:`, error);
         }
@@ -121,136 +162,52 @@ async function clearAllCaches() {
     log('CACHE', 'Finished clearing all session caches.');
 }
 
-async function listRunningApps(node) {
-    if (!node.token) {
-        log(`API-${node.id}`, 'Error: Not logged in. Token is missing.');
-        return null;
-    }
-    try {
-        const response = await fetch(`${node.apiUrl}/apps/listrunningapps`, {
-            method: 'GET',
-            headers: { 'zelidauth': node.token }
-        });
-        const data = await response.json();
-        if (DEBUG_MODE) {
-          log(`API-${node.id}`, 'Running Apps:', JSON.stringify(data, null, 2));
+function showPreloaderAndDiscover() {
+    setupFileLogger();
+
+    preloaderWindow = new BrowserWindow({
+        width: 680,
+        height: 400,
+        resizable: false,
+        frame: false,
+        alwaysOnTop: true,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
         }
-        return data;
-    } catch (error) {
-        log(`API-${node.id}-Error`, 'Error listing running apps:', error);
-        return null;
-    }
-}
-
-async function removeApp(node, appName) {
-    if (!node.token) {
-        log(`API-${node.id}`, 'Error: Not logged in. Token is missing.');
-        return null;
-    }
-    try {
-        const response = await fetch(`${node.apiUrl}/apps/appremove?appname=${appName}`, {
-            method: 'GET',
-            headers: { 'zelidauth': node.token }
-        });
-        return response;
-    } catch (error) {
-        log(`API-${node.id}-Error`, `Error removing app ${appName}:`, error);
-        return null;
-    }
-}
-
-async function runAutomationCycle(node) {
-  log(`AUTO-${node.id}`, 'Cycle started.');
-  log(`AUTO-${node.id}`, 'Checking for target applications to remove...');
-  const appsResponse = await listRunningApps(node);
-
-  if (appsResponse && appsResponse.status === 'success' && appsResponse.data) {
-    log(`AUTO-${node.id}`, `Found ${appsResponse.data.length} running applications:`);
-    const appNames = appsResponse.data.map(app => {
-        if (app.Names && app.Names.length > 0) {
-            let containerName = app.Names[0];
-            if (containerName.startsWith('/')) {
-                return containerName.substring(1);
-            }
-            return containerName;
-        }
-        return null;
-    }).filter(name => name !== null);
-
-    appNames.forEach(name => {
-        log(`AUTO-${node.id}`, `  - ${name}`);
     });
 
-    if (DEBUG_MODE) {
-        log(`AUTO-${node.id}`, 'Raw application data:', JSON.stringify(appsResponse.data, null, 2));
-    }
+    preloaderWindow.loadFile('preloader.html');
+    
+    preloaderWindow.webContents.on('did-finish-load', async () => {
+        // First, show the history so the user sees something
+        preloaderWindow.webContents.send('initialize-preloader', {
+            logHistory,
+            fontName: FONT_NAME,
+            fontSize: FONT_SIZE
+        });
 
-    for (const app of appsResponse.data) {
-      if (app.Names && app.Names.length > 0) {
-        let containerName = app.Names[0];
-        if (containerName.startsWith('/')) {
-          containerName = containerName.substring(1);
+        // Now, do the heavy lifting
+        await discoverAllNodes(SCAN_IPS);
+        await clearAllCaches();
+        
+        // When done, close the preloader
+        if (preloaderWindow && !preloaderWindow.isDestroyed()) {
+            preloaderWindow.close();
         }
-        const prefixMatch = TARGET_APP_PREFIXES.find(prefix => containerName.includes(prefix));
-        if (prefixMatch) {
-          // Correctly extract the main app name, which is the part before the first underscore.
-          // const mainAppName = containerName.split('_')[0];
-          const mainAppName = containerName.substring(containerName.lastIndexOf('_') + 1);
-          log(`AUTO-${node.id}`, `Found target app component: ${containerName} (prefix: ${prefixMatch}). Attempting to remove main app: ${mainAppName}...`);
-          
-          const removeResponse = await removeApp(node, mainAppName);
+    });
 
-          if (removeResponse && !removeResponse.ok) {
-            if (removeResponse.status === 401 || removeResponse.status === 403) {
-              log(`MAIN-${node.id}`, 'Authentication failed during removeApp. Token is invalid. Pausing automation.');
-              clearInterval(node.automationIntervalId);
-              node.automationIntervalId = null;
-              node.token = null;
-              break;
-            }
-          } else if (removeResponse && removeResponse.ok) {
-             if (DEBUG_MODE) {
-                const responseText = await removeResponse.text();
-                log(`API-${node.id}`, `Raw remove response for ${mainAppName}:`, responseText);
-                try {
-                    const jsonStrings = responseText.split('}{');
-                    const parsedObjects = [];
-                    jsonStrings.forEach((jsonStr, index) => {
-                        let currentJson = jsonStr;
-                        if (index > 0) { currentJson = '{' + currentJson; }
-                        if (index < jsonStrings.length - 1) { currentJson = currentJson + '}'; }
-                        try {
-                            const data = JSON.parse(currentJson);
-                            parsedObjects.push(data);
-                            log(`API-${node.id}`, `Parsed step ${parsedObjects.length} for ${mainAppName}:`, JSON.stringify(data, null, 2));
-                        } catch (parseError) {
-                            log(`API-${node.id}-Error`, `Failed to parse step ${index + 1} of remove response for ${mainAppName}. Error: ${parseError.message}. Part: ${currentJson}`);
-                        }
-                    });
-                    if (parsedObjects.length > 0) {
-                        log(`API-${node.id}`, `Final status for ${mainAppName}:`, JSON.stringify(parsedObjects[parsedObjects.length - 1], null, 2));
-                    }
-                } catch (e) {
-                    log(`API-${node.id}-Error`, `General error processing remove response for ${mainAppName}. Error: ${e.message}`);
-                }
-             } else {
-                await removeResponse.text();
-             }
-          }
-        }
-      }
-    }
-  } else if (node.token) {
-    log(`AUTO-${node.id}`, 'Could not retrieve running apps. API might be down.');
-  }
+    preloaderWindow.on('closed', () => {
+        preloaderWindow = null;
+        createMainWindow();
+    });
+
+    preloaderWindow.show();
 }
 
-async function createApp() {
-    await discoverAllNodes(SCAN_IPS);
-    await clearAllCaches();
-
+function createMainWindow() {
     if (NODES.length === 0) {
-        log('MAIN-Error', 'No active Flux nodes found on any specified IPs. Shutting down.');
+        log('MAIN-Error', 'No active Flux nodes found. Shutting down.');
         app.quit();
         return;
     }
@@ -267,17 +224,20 @@ async function createApp() {
     });
 
     mainWindow.setMenu(null);
-
     mainWindow.loadFile('shell.html');
     if (DEBUG_MODE) {
         mainWindow.webContents.openDevTools({ mode: 'detach' });
     }
 
     mainWindow.webContents.on('did-finish-load', () => {
-        log('MAIN', 'Shell renderer finished loading. Sending tab info.');
-        mainWindow.webContents.send('initialize-tabs', { 
+        log('MAIN', 'Shell renderer finished loading. Sending initial data.');
+        mainWindow.webContents.send('initialize-ui', { 
             nodes: NODES.map(n => ({ id: n.id, name: n.name, uiUrl: n.uiUrl })), 
-            activeId: activeViewId 
+            activeId: NODES.length > 0 ? NODES[0].id : null,
+            debug: DEBUG_MODE,
+            fontName: FONT_NAME,
+            fontSize: FONT_SIZE,
+            logHistory: logHistory
         });
     });
 
@@ -286,13 +246,11 @@ async function createApp() {
             webPreferences: {
                 preload: path.join(__dirname, 'monitor-preload.js'),
                 partition: `persist:${node.id}`,
-                additionalArguments: [`--node-id=${node.id}`, `--debug-mode=${DEBUG_MODE}`],
-                sandbox: false
+                additionalArguments: [`--node-id=${node.id}`]
             }
         });
         
         mainWindow.addBrowserView(view);
-        view.setBounds({ x: TABS_WIDTH, y: 0, width: WINDOW_WIDTH - TABS_WIDTH, height: WINDOW_HEIGHT });
         view.setAutoResize({ width: true, height: true });
         view.webContents.loadURL(node.uiUrl);
 
@@ -308,9 +266,120 @@ async function createApp() {
     }
 }
 
-// --- App Lifecycle ---
+async function listRunningApps(node) {
+    if (!node.token) {
+        log(`API-${node.id}`, 'Error: Not logged in. Token is missing.');
+        return null;
+    }
+    try {
+        const response = await fetch(`${node.apiUrl}/apps/listrunningapps`, { method: 'GET', headers: { 'zelidauth': node.token } });
+        const data = await response.json();
+        logDebug(`API-${node.id}`, 'Running Apps:', data);
+        return data;
+    } catch (error) {
+        log(`API-${node.id}-Error`, 'Error listing running apps:', error);
+        return null;
+    }
+}
 
-app.whenReady().then(createApp);
+async function removeApp(node, appName) {
+    if (!node.token) {
+        log(`API-${node.id}`, 'Error: Not logged in. Token is missing.');
+        return null;
+    }
+    try {
+        return await fetch(`${node.apiUrl}/apps/appremove?appname=${appName}`, { method: 'GET', headers: { 'zelidauth': node.token } });
+    } catch (error) {
+        log(`API-${node.id}-Error`, `Error removing app ${appName}:`, error);
+        return null;
+    }
+}
+
+async function runAutomationCycle(node) {
+  log(`AUTO-${node.id}`, 'Cycle started.');
+  const appsResponse = await listRunningApps(node);
+
+  if (appsResponse && appsResponse.status === 'success' && appsResponse.data) {
+    const count = appsResponse.data.length;
+    if (count === 0) {
+        log(`AUTO-${node.id}`, 'Found 0 running application.');
+    } else if (count === 1) {
+        log(`AUTO-${node.id}`, 'Found 1 running application:');
+    } else {
+        log(`AUTO-${node.id}`, `Found ${count} running applications:`);
+    }
+    
+    // Log each application name for clarity, with color markers
+    const appNames = appsResponse.data.map(app => {
+        if (app.Names && app.Names.length > 0) {
+            const name = app.Names[0].startsWith('/') ? app.Names[0].substring(1) : app.Names[0];
+            const isTarget = TARGET_APP_PREFIXES.some(prefix => name.includes(prefix));
+            return { name, isTarget };
+        }
+        return null;
+    }).filter(name => name !== null);
+
+    appNames.forEach(app => {
+        const color = app.isTarget ? 'RED' : 'GREEN';
+        log(`AUTO-${node.id}`, `  - @@${color}@@${app.name}##`);
+    });
+
+    logDebug(`AUTO-${node.id}`, 'Raw application data:', appsResponse.data);
+
+    for (const app of appsResponse.data) {
+      if (app.Names && app.Names.length > 0) {
+        let containerName = app.Names[0].startsWith('/') ? app.Names[0].substring(1) : app.Names[0];
+        const prefixMatch = TARGET_APP_PREFIXES.find(prefix => containerName.includes(prefix));
+        
+        if (prefixMatch) {
+          const mainAppName = containerName.substring(containerName.lastIndexOf('_') + 1);
+          log(`AUTO-${node.id}`, `Found target: ${containerName}. Removing main app: ${mainAppName}...`);
+          
+          const removeResponse = await removeApp(node, mainAppName);
+          if (removeResponse && !removeResponse.ok && (removeResponse.status === 401 || removeResponse.status === 403)) {
+              log(`MAIN-${node.id}`, 'Authentication failed. Pausing automation.');
+              clearInterval(node.automationIntervalId);
+              node.automationIntervalId = null;
+              node.token = null;
+              break;
+          } else if (removeResponse && removeResponse.ok) {
+             const responseText = await removeResponse.text();
+             logDebug(`API-${node.id}`, `Raw remove response for ${mainAppName}:`, responseText);
+          }
+        }
+      }
+    }
+  } else if (node.token) {
+    log(`AUTO-${node.id}`, 'Could not retrieve running apps. API might be down or token expired.');
+  }
+}
+
+// --- App Lifecycle Listeners ---
+
+app.whenReady().then(showPreloaderAndDiscover);
+
+app.on('before-quit', () => {
+    if (logStream) {
+        log('MAIN', 'Closing log stream...');
+        logStream.end();
+        logStream = null;
+    }
+});
+
+app.on('window-all-closed', () => app.quit());
+
+app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+        showPreloaderAndDiscover();
+    }
+});
+
+ipcMain.on('update-view-bounds', (event, bounds) => {
+    logDebug('MAIN', 'Received new bounds for views:', bounds);
+    NODES.forEach(node => {
+        if (node.view) node.view.setBounds(bounds);
+    });
+});
 
 ipcMain.on('switch-view', (event, nodeId) => {
     const node = NODES.find(n => n.id === nodeId);
@@ -318,6 +387,34 @@ ipcMain.on('switch-view', (event, nodeId) => {
         mainWindow.setTopBrowserView(node.view);
         activeViewId = nodeId;
     }
+});
+
+ipcMain.on('force-refresh-node', async (event, { nodeId }) => {
+    const node = NODES.find(n => n.id === nodeId);
+    if (!node) {
+        log('MAIN-Error', `Attempted to refresh non-existent node: ${nodeId}`);
+        return;
+    }
+
+    log('MAIN', `Force refresh requested for node ${node.id}`);
+    try {
+        const ses = session.fromPartition(`persist:${node.id}`);
+        await ses.clearStorageData({
+            storages: ['appcache', 'cookies', 'filesystem', 'indexdb', 'localstorage', 'shadercache', 'websql', 'serviceworkers', 'cachestorage']
+        });
+        log('MAIN', `Session data cleared for ${node.id}. Reloading view...`);
+        node.view.webContents.reload();
+    } catch (error) {
+        log('MAIN-Error', `Failed to force refresh node ${node.id}:`, error);
+    }
+});
+
+ipcMain.on('log-info-from-preload', (event, { nodeId, message }) => {
+    log(`PRELOAD-${nodeId}`, message);
+});
+
+ipcMain.on('log-debug-from-preload', (event, { nodeId, message }) => {
+    logDebug(`PRELOAD-${nodeId}`, message);
 });
 
 ipcMain.on('auth-state-changed', (event, authState) => {
@@ -344,14 +441,4 @@ ipcMain.on('auth-state-changed', (event, authState) => {
             node.automationIntervalId = null;
         }
     }
-});
-
-app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createApp();
-    }
-});
-
-app.on('window-all-closed', function () {
-    app.quit();
 });

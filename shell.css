@@ -1,34 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Hack&display=swap');
+
 body, html {
     margin: 0;
     padding: 0;
     height: 100%;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* font-family will be set by JS */
     background-color: #2d3748; /* This will be the background of the content area */
     color: #f7fafc;
     overflow: hidden;
 }
 
-.container {
+.main-wrapper {
     display: flex;
-    flex-direction: row; /* Changed from column to row */
+    flex-direction: column;
     height: 100vh;
 }
 
-.tabs {
+.container {
     display: flex;
-    flex-direction: column; /* Changed to column */
-    width: 220px; /* Added fixed width */
+    flex-direction: row; /* Changed from column to row */
+    flex: 1; /* Allow container to grow */
+    min-height: 0; /* Important for flexbox shrinking */
+}
+
+#tabs-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 180px; /* Minimum reasonable width */
+    max-width: 45%; /* Maximum reasonable width */
     flex-shrink: 0;
     background-color: #1a202c;
-    border-right: 1px solid #4a5568; /* Changed from border-bottom */
-    overflow-y: auto; /* Added for scrolling */
-    padding: 10px 5px; /* Adjusted padding */
+    border-right: 1px solid #4a5568;
+}
+
+#tabs-container {
+    flex: 1; /* Make the list container grow */
+    overflow-y: auto; /* Make THIS part scrollable */
+    min-height: 0; /* Crucial for shrinking */
+    padding: 10px 5px 0 5px; /* Adjust padding */
+}
+
+.tabs-footer {
+    padding: 10px;
+    border-top: 1px solid #4a5568;
+}
+
+#force-refresh-button {
+    width: 100%;
+    padding: 8px;
+    background-color: #4a5568;
+    color: #f7fafc;
+    border: 1px solid #718096;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: inherit; /* Use font from body */
+    font-size: inherit; /* Use font size from body */
+    transition: background-color 0.2s ease;
+}
+
+#force-refresh-button:hover {
+    background-color: #718096;
 }
 
 .tab {
     padding: 7px 15px; /* Adjusted padding */
     cursor: pointer;
-    font-size: 12px;
+    /* font-size will be set by JS */
     border: 1px solid transparent;
     border-right: none; /* De-emphasize right border */
     margin-bottom: 4px; /* Changed from margin-right */
@@ -38,6 +75,7 @@ body, html {
     white-space: nowrap; /* Prevent text wrapping */
     overflow: hidden;
     text-overflow: ellipsis; /* Add ellipsis for long names */
+    /* font-family will be set by JS */
 }
 
 .tab:hover {
@@ -54,4 +92,21 @@ body, html {
 .content {
     flex-grow: 1;
     position: relative;
+}
+
+#log-viewer {
+    height: 30%;
+    background-color: #1a202c;
+    border-top: 1px solid #4a5568;
+    overflow-y: scroll;
+    padding: 10px;
+    /* font-family and font-size will be set by JS */
+    color: #a0aec0;
+    box-sizing: border-box;
+}
+
+#log-viewer p {
+    margin: 0 0 5px 0;
+    padding: 0;
+    word-break: break-all;
 }

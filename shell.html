@@ -6,13 +6,21 @@
     <link rel="stylesheet" href="shell.css">
 </head>
 <body>
-    <div class="container">
-        <div class="tabs" id="tabs-container">
-            <!-- Tabs will be dynamically inserted here -->
+    <div class="main-wrapper">
+        <div class="container">
+            <div id="tabs-column">
+                <div id="tabs-container">
+                    <!-- Tabs will be dynamically inserted here -->
+                </div>
+                <div class="tabs-footer">
+                    <button id="force-refresh-button">Reset Session</button>
+                </div>
+            </div>
+            <div class="content" id="content-container">
+                <!-- BrowserView will be attached here -->
+            </div>
         </div>
-        <div class="content" id="content-container">
-            <!-- BrowserView will be attached here -->
-        </div>
+        <div id="log-viewer"></div>
     </div>
     <script src="shell-renderer.js"></script>
 </body>

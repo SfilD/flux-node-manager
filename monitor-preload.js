@@ -1,74 +1,54 @@
 const { ipcRenderer } = require('electron');
 
-// Extract arguments passed from main process
+// --- Argument Parsing ---
 let nodeId = 'unknown';
-let DEBUG = false; // Default to false
-
 const nodeIdArg = process.argv.find(arg => arg.startsWith('--node-id='));
 if (nodeIdArg) {
     nodeId = nodeIdArg.split('=')[1];
 }
 
-const debugModeArg = process.argv.find(arg => arg.startsWith('--debug-mode='));
-if (debugModeArg) {
-    DEBUG = debugModeArg.split('=')[1] === 'true';
+// --- Logging System ---
+function log(message) {
+    ipcRenderer.send('log-info-from-preload', { nodeId, message });
 }
 
-// --- Debug Utility ---
-function log() {
-  if (DEBUG) {
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
-    const year = now.getFullYear();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    
-    const timestamp = `[${day}.${month}.${year} ${hours}:${minutes}]`;
-    const prefix = `[MONITOR-${nodeId}]`;
-    
-    const args = [timestamp + prefix];
-    for (let i = 0; i < arguments.length; i++) {
-      args.push(arguments[i]);
-    }
-    console.log.apply(console, args);
-  }
+function logDebug(message) {
+    // Let the main process decide if it should be displayed
+    ipcRenderer.send('log-debug-from-preload', { nodeId, message });
 }
 
 function logState(context) {
-    if (!DEBUG) return;
-    log(`----- [${context}] -----`);
-    log('Timestamp:', new Date().toISOString());
+    let state = `----- [${context}] -----\n`;
+    state += `Timestamp: ${new Date().toISOString()}\n`;
 
-    log('\n--- localStorage ---');
+    state += '\n--- localStorage ---\n';
     try {
         const ls = {};
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             ls[key] = localStorage.getItem(key);
         }
-        log(JSON.stringify(ls, null, 2));
+        state += JSON.stringify(ls, null, 2);
     } catch (e) {
-        log(`Error reading localStorage: ${e.message}`);
+        state += `Error reading localStorage: ${e.message}`;
     }
 
-    log('\n--- sessionStorage ---');
+    state += '\n\n--- sessionStorage ---\n';
     try {
         const ss = {};
         for (let i = 0; i < sessionStorage.length; i++) {
             const key = sessionStorage.key(i);
             ss[key] = sessionStorage.getItem(key);
         }
-        log(JSON.stringify(ss, null, 2));
+        state += JSON.stringify(ss, null, 2);
     } catch (e) {
-        log(`Error reading sessionStorage: ${e.message}`);
+        state += `Error reading sessionStorage: ${e.message}`;
     }
-
-    log('\n--- Cookies ---');
-    log(document.cookie || '(empty)');
-    log(`----- End of [${context}] -----`);
+    
+    state += `\n\n--- Cookies ---\n${document.cookie || '(empty)'}\n`;
+    state += `----- End of [${context}] -----`;
+    logDebug(state);
 }
-
 
 // --- Main Logic ---
 
@@ -76,7 +56,6 @@ function hideSideMenu() {
   try {
     const style = document.createElement('style');
     style.type = 'text/css';
-    // The selector for the main navigation container, based on user-provided HTML.
     const menuSelector = '.main-menu';
     const menuToggleSelector = '.feather-menu';
     const bookmarkSelector = '.bookmark-wrapper';
@@ -90,9 +69,9 @@ function hideSideMenu() {
       ${finalIconSelector} { display: none !important; }
     `;
     document.head.appendChild(style);
-    log('Injected CSS to hide side menu, toggle button, bookmark wrapper, and theme switcher.');
+    log('Injected CSS to hide UI elements.');
   } catch (e) {
-    log('Error injecting CSS to hide side menu:', e.message);
+    log(`Error injecting CSS: ${e.message}`);
   }
 }
 
@@ -104,7 +83,6 @@ function initializeMonitor() {
     const checkAuthState = () => {
         const currentToken = localStorage.getItem('zelidauth');
         
-        // Case 1: User has logged in (new token found)
         if (currentToken && currentToken !== lastSentToken) {
             log('Login detected or token changed.');
             logState('Post-Login State');
@@ -112,7 +90,6 @@ function initializeMonitor() {
             log('Auth state [LOGGED IN] sent to main process.');
             lastSentToken = currentToken;
         } 
-        // Case 2: User has logged out (token disappeared)
         else if (!currentToken && lastSentToken !== null) {
             log('Logout detected.');
             logState('Post-Logout State');
@@ -122,16 +99,14 @@ function initializeMonitor() {
         }
     };
 
-    // Set an interval to periodically check for the auth state.
-    // This will run for the lifetime of the window.
-    setInterval(checkAuthState, 2000); // Check every 2 seconds
+    setInterval(checkAuthState, 2000);
 
     window.addEventListener('load', () => {
         log('Page fully loaded. Performing initial state log.');
         logState('Initial State (After Load)');
-        // Perform an initial check as soon as the page loads
         checkAuthState();
     });
 }
 
 window.addEventListener('DOMContentLoaded', initializeMonitor);
+
