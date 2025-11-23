@@ -296,62 +296,62 @@ async function removeApp(node, appName) {
 }
 
 async function runAutomationCycle(node) {
-  log(`AUTO-${node.id}`, 'Cycle started.');
-  const appsResponse = await listRunningApps(node);
+    log(`AUTO-${node.id}`, 'Cycle started.');
+    const appsResponse = await listRunningApps(node);
 
-  if (appsResponse && appsResponse.status === 'success' && appsResponse.data) {
-    const count = appsResponse.data.length;
-    if (count === 0) {
-        log(`AUTO-${node.id}`, 'Found 0 running application.');
-    } else if (count === 1) {
-        log(`AUTO-${node.id}`, 'Found 1 running application:');
+    if (appsResponse && appsResponse.status === 'success' && appsResponse.data) {
+        // --- Happy Path: API call succeeded ---
+        const count = appsResponse.data.length;
+        if (count === 0) {
+            log(`AUTO-${node.id}`, 'Found 0 running application.');
+        } else {
+            log(`AUTO-${node.id}`, `Found ${count === 1 ? '1 running application' : `${count} running applications`}:`);
+        }
+
+        const appNames = appsResponse.data.map(app => {
+            if (app.Names && app.Names.length > 0) {
+                const name = app.Names[0].startsWith('/') ? app.Names[0].substring(1) : app.Names[0];
+                const isTarget = TARGET_APP_PREFIXES.some(prefix => name.includes(prefix));
+                return { name, isTarget };
+            }
+            return null;
+        }).filter(name => name !== null);
+
+        appNames.forEach(app => {
+            const color = app.isTarget ? 'RED' : 'GREEN';
+            log(`AUTO-${node.id}`, `  - @@${color}@@${app.name}##`);
+        });
+
+        logDebug(`AUTO-${node.id}`, 'Raw application data:', appsResponse.data);
+
+        for (const app of appNames) {
+            if (app.isTarget) {
+                const mainAppName = app.name.substring(app.name.lastIndexOf('_') + 1);
+                log(`AUTO-${node.id}`, `Found target: ${app.name}. Removing main app: ${mainAppName}...`);
+
+                const removeResponse = await removeApp(node, mainAppName);
+                if (removeResponse && !removeResponse.ok && (removeResponse.status === 401 || removeResponse.status === 403)) {
+                    log(`MAIN-${node.id}`, 'Authentication failed during removeApp. Token is invalid. Pausing automation.');
+                    clearInterval(node.automationIntervalId);
+                    node.automationIntervalId = null;
+                    node.token = null;
+                    break; // Exit the loop
+                }
+            }
+        }
     } else {
-        log(`AUTO-${node.id}`, `Found ${count} running applications:`);
-    }
-    
-    // Log each application name for clarity, with color markers
-    const appNames = appsResponse.data.map(app => {
-        if (app.Names && app.Names.length > 0) {
-            const name = app.Names[0].startsWith('/') ? app.Names[0].substring(1) : app.Names[0];
-            const isTarget = TARGET_APP_PREFIXES.some(prefix => name.includes(prefix));
-            return { name, isTarget };
+        // --- Unhappy Path: API call failed or returned status: "error" ---
+        if (node.token) {
+            // If we think we have a token, but the API fails, the token is likely expired.
+            log(`MAIN-${node.id}`, 'Authentication failed (API status not success). Token is likely invalid. Pausing automation.');
+            clearInterval(node.automationIntervalId);
+            node.automationIntervalId = null;
+            node.token = null;
+        } else {
+            // This case should not be reached often in a running cycle, but good for safety.
+            log(`AUTO-${node.id}`, 'Could not retrieve running apps (not logged in).');
         }
-        return null;
-    }).filter(name => name !== null);
-
-    appNames.forEach(app => {
-        const color = app.isTarget ? 'RED' : 'GREEN';
-        log(`AUTO-${node.id}`, `  - @@${color}@@${app.name}##`);
-    });
-
-    logDebug(`AUTO-${node.id}`, 'Raw application data:', appsResponse.data);
-
-    for (const app of appsResponse.data) {
-      if (app.Names && app.Names.length > 0) {
-        let containerName = app.Names[0].startsWith('/') ? app.Names[0].substring(1) : app.Names[0];
-        const prefixMatch = TARGET_APP_PREFIXES.find(prefix => containerName.includes(prefix));
-        
-        if (prefixMatch) {
-          const mainAppName = containerName.substring(containerName.lastIndexOf('_') + 1);
-          log(`AUTO-${node.id}`, `Found target: ${containerName}. Removing main app: ${mainAppName}...`);
-          
-          const removeResponse = await removeApp(node, mainAppName);
-          if (removeResponse && !removeResponse.ok && (removeResponse.status === 401 || removeResponse.status === 403)) {
-              log(`MAIN-${node.id}`, 'Authentication failed. Pausing automation.');
-              clearInterval(node.automationIntervalId);
-              node.automationIntervalId = null;
-              node.token = null;
-              break;
-          } else if (removeResponse && removeResponse.ok) {
-             const responseText = await removeResponse.text();
-             logDebug(`API-${node.id}`, `Raw remove response for ${mainAppName}:`, responseText);
-          }
-        }
-      }
     }
-  } else if (node.token) {
-    log(`AUTO-${node.id}`, 'Could not retrieve running apps. API might be down or token expired.');
-  }
 }
 
 // --- App Lifecycle Listeners ---
