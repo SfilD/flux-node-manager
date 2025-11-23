@@ -84,16 +84,41 @@ function initializeMonitor() {
         const currentToken = localStorage.getItem('zelidauth');
         
         if (currentToken && currentToken !== lastSentToken) {
-            log('Login detected or token changed.');
-            logState('Post-Login State');
-            ipcRenderer.send('auth-state-changed', { nodeId: nodeId, loggedIn: true, token: currentToken });
-            log('Auth state [LOGGED IN] sent to main process.');
-            lastSentToken = currentToken;
+            log(`Found token: '${currentToken}'`); // Log the raw token
+            try {
+                const authData = JSON.parse(currentToken);
+                const { zelid, signature, loginPhrase } = authData;
+
+                if (zelid && signature && loginPhrase) {
+                    log('Login detected or token changed.');
+                    logState('Post-Login State');
+                    ipcRenderer.send('auth-state-changed', { 
+                        nodeId: nodeId, 
+                        loggedIn: true, 
+                        zelid, 
+                        signature, 
+                        loginPhrase 
+                    });
+                    log('Auth state [LOGGED IN] sent to main process.');
+                    lastSentToken = currentToken;
+                }
+            } catch (e) {
+                log(`Error parsing auth token: ${e.message}`);
+                // Fallback or error handling if token is malformed
+                if (lastSentToken !== null) {
+                     // If we previously thought we were logged in, notify of logout
+                    log('Logout detected due to malformed token.');
+                    logState('Post-Logout State (Malformed Token)');
+                    ipcRenderer.send('auth-state-changed', { nodeId: nodeId, loggedIn: false });
+                    log('Auth state [LOGGED OUT] sent to main process.');
+                    lastSentToken = null;
+                }
+            }
         } 
         else if (!currentToken && lastSentToken !== null) {
             log('Logout detected.');
             logState('Post-Logout State');
-            ipcRenderer.send('auth-state-changed', { nodeId: nodeId, loggedIn: false, token: null });
+            ipcRenderer.send('auth-state-changed', { nodeId: nodeId, loggedIn: false });
             log('Auth state [LOGGED OUT] sent to main process.');
             lastSentToken = null;
         }

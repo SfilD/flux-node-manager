@@ -266,41 +266,6 @@ function createMainWindow() {
     }
 }
 
-async function isTokenValid(node) {
-    if (!node.token) {
-        logDebug(`AUTH-${node.id}`, 'Token is null or empty, validation automatically fails.');
-        return false;
-    }
-
-    try {
-        // We use a lightweight, authenticated endpoint to validate the token.
-        const response = await fetch(`${node.apiUrl}/fluxshare/stats`, {
-            method: 'GET',
-            headers: { 'zelidauth': node.token },
-            timeout: 10000 // 10-second timeout
-        });
-
-        if (response.status === 401 || response.status === 403) {
-            log(`AUTH-${node.id}`, `Authentication failed with status ${response.status}. Token is invalid.`);
-            return false;
-        }
-
-        // For other non-OK statuses, we assume it's a temporary server/network issue.
-        // We don't invalidate the token, as the endpoint might be down. The next cycle will re-validate.
-        if (!response.ok) {
-            log(`AUTH-${node.id}`, `Token validation check responded with ${response.status}. Treating as a temporary issue.`);
-            return true;
-        }
-
-        logDebug(`AUTH-${node.id}`, 'Token validation successful.');
-        return true;
-    } catch (error) {
-        log(`AUTH-${node.id}-Error`, 'A network error occurred during token validation:', error.message);
-        // On network errors, we also assume it's a temporary problem and don't invalidate the token.
-        return true;
-    }
-}
-
 async function listRunningApps(node) {
     if (!node.token) {
         log(`API-${node.id}`, 'Error: Not logged in. Token is missing.');
@@ -333,23 +298,13 @@ async function removeApp(node, appName) {
 async function runAutomationCycle(node) {
     log(`AUTO-${node.id}`, 'Cycle started.');
 
-    // 1. First, ensure we have a token and it is still valid.
+    // 1. First, ensure we have a token.
     if (!node.token) {
         log(`AUTO-${node.id}`, 'Automation cycle skipped: Not logged in.');
-        // This should ideally not happen if the interval is cleared on logout, but as a safeguard:
         if (node.automationIntervalId) {
             clearInterval(node.automationIntervalId);
             node.automationIntervalId = null;
         }
-        return;
-    }
-
-    const tokenIsValid = await isTokenValid(node);
-    if (!tokenIsValid) {
-        log(`MAIN-${node.id}`, 'Token is invalid. Pausing automation.');
-        clearInterval(node.automationIntervalId);
-        node.automationIntervalId = null;
-        node.token = null; // Important: clear the invalid token
         return;
     }
 
@@ -359,7 +314,7 @@ async function runAutomationCycle(node) {
     // 3. Handle the response for listRunningApps.
     if (!appsResponse || appsResponse.status !== 'success' || !appsResponse.data) {
         // Treat this as a temporary network/API error, not an auth failure.
-        // The token was already validated. We just log it and wait for the next cycle.
+        // We just log it and wait for the next cycle.
         log(`API-${node.id}-Error`, 'Could not retrieve running apps (API error or node offline). Will retry next cycle.');
         return;
     }
@@ -471,24 +426,15 @@ ipcMain.on('log-debug-from-preload', (event, { nodeId, message }) => {
     logDebug(`PRELOAD-${nodeId}`, message);
 });
 
-ipcMain.on('auth-state-changed', async (event, authState) => {
+ipcMain.on('auth-state-changed', (event, authState) => {
     const node = NODES.find(n => n.id === authState.nodeId);
     if (!node) return;
 
     if (authState.loggedIn) {
         log(`MAIN-${node.id}`, 'Received LOGIN notification.');
         node.token = authState.token;
-
-        // Proactively validate the token
-        const tokenIsValid = await isTokenValid(node);
-        if (!tokenIsValid) {
-            log(`MAIN-${node.id}`, 'Received a token that is already invalid. Not starting automation.');
-            node.token = null; // Clear the invalid token
-            return;
-        }
-
         if (!node.automationIntervalId) {
-            log(`MAIN-${node.id}`, 'Token is valid. Starting automation in 5 seconds...');
+            log(`MAIN-${node.id}`, 'Starting automation in 5 seconds...');
             setTimeout(() => {
                 log(`MAIN-${node.id}`, 'Initial automation cycle starting now.');
                 runAutomationCycle(node);
