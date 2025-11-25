@@ -1,4 +1,4 @@
-const { ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 // --- Argument Parsing ---
 let nodeId = 'unknown';

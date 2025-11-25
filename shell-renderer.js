@@ -1,5 +1,3 @@
-const { ipcRenderer } = require('electron');
-
 const tabsContainer = document.getElementById('tabs-container');
 const logViewer = document.getElementById('log-viewer');
 const contentContainer = document.getElementById('content-container');
@@ -17,26 +15,26 @@ let isDebugMode = false;
 // --- Event Listeners ---
 
 btnExit.addEventListener('click', () => {
-    ipcRenderer.send('app-quit');
+    window.electronAPI.send('app-quit');
 });
 
 btnReset.addEventListener('click', () => {
     if (activeTabId) {
         console.log(`Requesting force refresh for node: ${activeTabId}`);
-        ipcRenderer.send('force-refresh-node', { nodeId: activeTabId });
+        window.electronAPI.send('force-refresh-node', { nodeId: activeTabId });
     }
 });
 
 btnAbout.addEventListener('click', () => {
-    ipcRenderer.send('show-about');
+    window.electronAPI.send('show-about');
 });
 
 btnDocs.addEventListener('click', () => {
-    ipcRenderer.send('open-docs');
+    window.electronAPI.send('open-docs');
 });
 
 btnSettings.addEventListener('click', () => {
-    ipcRenderer.send('open-settings-file');
+    window.electronAPI.send('open-settings-file');
 });
 
 // --- Layout and Bounds Management ---
@@ -44,7 +42,7 @@ btnSettings.addEventListener('click', () => {
 // Sends the precise bounds of the content area to the main process
 function sendContentBounds() {
     const rect = contentContainer.getBoundingClientRect();
-    ipcRenderer.send('update-view-bounds', {
+    window.electronAPI.send('update-view-bounds', {
         x: Math.round(rect.x),
         y: Math.round(rect.y),
         width: Math.round(rect.width),
@@ -147,7 +145,7 @@ function addLogMessage(message) {
 
 // --- IPC Listeners ---
 
-ipcRenderer.on('initialize-ui', (event, data) => {
+window.electronAPI.on('initialize-ui', (data) => {
     const { nodes, activeId, debug, fontName, fontSize, logHistory } = data;
     isDebugMode = debug;
 
@@ -177,7 +175,7 @@ ipcRenderer.on('initialize-ui', (event, data) => {
             }
             tab.classList.add('active');
             activeTabId = node.id;
-            ipcRenderer.send('switch-view', node.id);
+            window.electronAPI.send('switch-view', node.id);
         });
 
         tabsContainer.appendChild(tab);
@@ -189,7 +187,7 @@ ipcRenderer.on('initialize-ui', (event, data) => {
     updateThemeAndLayout(fontName, fontSize);
 });
 
-ipcRenderer.on('log-message', (event, message) => {
+window.electronAPI.on('log-message', (message) => {
     addLogMessage(message);
 });
 

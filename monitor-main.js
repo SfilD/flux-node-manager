@@ -4,9 +4,6 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const ini = require('ini');
 
-// Suppress security warnings for local development (loading from http)
-process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
-
 // Disable hardware acceleration to prevent rendering issues
 app.disableHardwareAcceleration();
 
@@ -96,11 +93,28 @@ function logDebug(prefix, ...args) {
     dispatchLog(message, true);
 }
 
+async function fetchWithTimeout(url, options = {}, timeout = 10000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout');
+    }
+    throw error;
+  }
+}
+
 // --- Application Lifecycle Functions ---
 
 async function checkFluxNodeExistence(apiUrl) {
     try {
-        await fetch(`${apiUrl}/apps/listrunningapps`, { method: 'GET', timeout: 10000 });
+        await fetchWithTimeout(`${apiUrl}/apps/listrunningapps`, { method: 'GET' }, 10000);
         return true;
     } catch (error) {
         return false;
@@ -182,8 +196,9 @@ function showPreloaderAndDiscover() {
         frame: false,
         alwaysOnTop: true,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
+            preload: path.join(__dirname, 'preloader-preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false
         }
     });
 
@@ -228,8 +243,9 @@ function createMainWindow() {
         resizable: false,
         maximizable: false,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
+            preload: path.join(__dirname, 'shell-preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false
         }
     });
 
@@ -256,6 +272,8 @@ function createMainWindow() {
             webPreferences: {
                 preload: path.join(__dirname, 'monitor-preload.js'),
                 partition: `persist:${node.id}`,
+                contextIsolation: true,
+                nodeIntegration: false,
                 additionalArguments: [`--node-id=${node.id}`]
             }
         });
@@ -277,18 +295,28 @@ function createMainWindow() {
 }
 
 async function listRunningApps(node) {
-    if (!node.token) {
-        log(`API-${node.id}`, 'Error: Not logged in. Token is missing.');
-        return null;
-    }
+    // This is a public endpoint, no token is needed.
     try {
-        const response = await fetch(`${node.apiUrl}/apps/listrunningapps`, { method: 'GET' });
+        const response = await fetchWithTimeout(`${node.apiUrl}/apps/listrunningapps`, { method: 'GET' });
+        
+        if (!response.ok) {
+            log(`API-${node.id}-Error`, `Error listing running apps: HTTP status ${response.status}`);
+            return []; // Return empty array on HTTP error
+        }
+
         const data = await response.json();
         logDebug(`API-${node.id}`, 'Running Apps:', data);
-        return data;
+
+        if (data.status === 'success' && Array.isArray(data.data)) {
+            return data.data; // Return the actual array of apps
+        }
+        
+        log(`API-${node.id}-Error`, 'API call to list apps did not return a success status or valid data.');
+        return []; // Return empty array if the response JSON is not what we expect
+
     } catch (error) {
-        log(`API-${node.id}-Error`, 'Error listing running apps:', error);
-        return null;
+        log(`API-${node.id}-Error`, 'Error listing running apps:', error.message);
+        return []; // Return empty array on network/timeout error
     }
 }
 
@@ -298,7 +326,7 @@ async function removeApp(node, appName) {
         return null;
     }
     try {
-        return await fetch(`${node.apiUrl}/apps/appremove?appname=${appName}`, { method: 'GET', headers: { 'zelidauth': node.token } });
+        return await fetchWithTimeout(`${node.apiUrl}/apps/appremove?appname=${appName}`, { method: 'GET', headers: { 'zelidauth': node.token } });
     } catch (error) {
         log(`API-${node.id}-Error`, `Error removing app ${appName}:`, error);
         return null;
@@ -319,25 +347,17 @@ async function runAutomationCycle(node) {
     }
 
     // 2. Now, get the list of running apps. This is a public endpoint.
-    const appsResponse = await listRunningApps(node);
-
-    // 3. Handle the response for listRunningApps.
-    if (!appsResponse || appsResponse.status !== 'success' || !appsResponse.data) {
-        // Treat this as a temporary network/API error, not an auth failure.
-        // We just log it and wait for the next cycle.
-        log(`API-${node.id}-Error`, 'Could not retrieve running apps (API error or node offline). Will retry next cycle.');
-        return;
-    }
+    const runningApps = await listRunningApps(node);
     
     // --- Happy Path: API call succeeded ---
-    const count = appsResponse.data.length;
+    const count = runningApps.length;
     if (count === 0) {
-        log(`AUTO-${node.id}`, 'Found 0 running application.');
+        log(`AUTO-${node.id}`, 'Found 0 running applications.');
     } else {
         log(`AUTO-${node.id}`, `Found ${count === 1 ? '1 running application' : `${count} running applications`}:`);
     }
 
-    const appNames = appsResponse.data.map(app => {
+    const appNames = runningApps.map(app => {
         if (app.Names && app.Names.length > 0) {
             const name = app.Names[0].startsWith('/') ? app.Names[0].substring(1) : app.Names[0];
             const isTarget = TARGET_APP_PREFIXES.some(prefix => name.includes(prefix));
@@ -351,7 +371,7 @@ async function runAutomationCycle(node) {
         log(`AUTO-${node.id}`, `  - @@${color}@@${app.name}##`);
     });
 
-    logDebug(`AUTO-${node.id}`, 'Raw application data:', appsResponse.data);
+    logDebug(`AUTO-${node.id}`, 'Raw application data:', runningApps);
 
     // 4. Perform the removal logic, which requires the (now validated) token.
     for (const app of appNames) {
