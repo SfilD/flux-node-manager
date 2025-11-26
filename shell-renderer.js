@@ -109,7 +109,7 @@ resizeObserver.observe(contentContainer);
 
 function addLogMessage(message) {
     const p = document.createElement('p');
-    const colorRegex = /\@\@(RED|GREEN)\@\@(.*?)\#\#/g;
+    const colorRegex = /\@\@(RED|GREEN|YELLOW)\@\@(.*?)\#\#/g;
     let lastIndex = 0;
     let match;
 
@@ -128,6 +128,8 @@ function addLogMessage(message) {
             span.style.color = '#ff6b6b'; // A lighter red
         } else if (colorName === 'GREEN') {
             span.style.color = '#69f0ae'; // A light green
+        } else if (colorName === 'YELLOW') {
+            span.style.color = '#ffd700'; // Gold-like yellow
         }
         
         p.appendChild(span);

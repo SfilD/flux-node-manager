@@ -117,6 +117,7 @@ async function checkFluxNodeExistence(apiUrl) {
         await fetchWithTimeout(`${apiUrl}/apps/listrunningapps`, { method: 'GET' }, 10000);
         return true;
     } catch (error) {
+        logDebug('DISCOVERY-Check', `Node check failed for ${apiUrl}: ${error.message}`);
         return false;
     }
 }
@@ -322,14 +323,28 @@ async function listRunningApps(node) {
 
 async function removeApp(node, appName) {
     if (!node.token) {
-        log(`API-${node.id}`, 'Error: Not logged in. Token is missing.');
-        return null;
+        const errorMsg = 'Not logged in. Token is missing.';
+        log(`API-${node.id}`, `Error: ${errorMsg}`);
+        return { success: false, error: errorMsg, authError: true };
     }
     try {
-        return await fetchWithTimeout(`${node.apiUrl}/apps/appremove?appname=${appName}`, { method: 'GET', headers: { 'zelidauth': node.token } });
+        const response = await fetchWithTimeout(`${node.apiUrl}/apps/appremove?appname=${appName}`, { method: 'GET', headers: { 'zelidauth': node.token } });
+
+        if (!response.ok) {
+            const isAuthError = response.status === 401 || response.status === 403;
+            const errorMsg = `HTTP error! Status: ${response.status}`;
+            log(`API-${node.id}-Error`, errorMsg);
+            return { success: false, error: errorMsg, authError: isAuthError };
+        }
+
+        // Successful removal might not return a JSON body, but just an OK status.
+        const responseText = await response.text();
+        logDebug(`API-${node.id}`, `Successfully removed app ${appName}. Server response: ${responseText}`);
+        return { success: true, data: responseText };
+
     } catch (error) {
-        log(`API-${node.id}-Error`, `Error removing app ${appName}:`, error);
-        return null;
+        log(`API-${node.id}-Error`, `Error removing app ${appName}:`, error.message);
+        return { success: false, error: error.message, authError: false };
     }
 }
 
@@ -377,17 +392,22 @@ async function runAutomationCycle(node) {
     for (const app of appNames) {
         if (app.isTarget) {
             const mainAppName = app.name.substring(app.name.lastIndexOf('_') + 1);
-            log(`AUTO-${node.id}`, `Found target: ${app.name}. Removing main app: ${mainAppName}...`);
+            log(`AUTO-${node.id}`, `Found target: @@YELLOW@@${app.name}##. Removing main app: @@YELLOW@@${mainAppName}##...`);
 
-            const removeResponse = await removeApp(node, mainAppName);
-            // The isTokenValid check at the start of the cycle reduces the chance of this failing,
-            // but we still handle it as a safeguard in case the token expires between checks.
-            if (removeResponse && !removeResponse.ok && (removeResponse.status === 401 || removeResponse.status === 403)) {
-                log(`MAIN-${node.id}`, 'Authentication failed during removeApp. Token is invalid. Pausing automation.');
+            const removeResult = await removeApp(node, mainAppName);
+            
+            // Check if the removal failed due to an authentication error
+            if (removeResult.authError) {
+                log(`MAIN-${node.id}`, 'Authentication failed during app removal. Token is invalid. Pausing automation.');
                 clearInterval(node.automationIntervalId);
                 node.automationIntervalId = null;
                 node.token = null;
                 break; // Exit the loop for this cycle
+            } else if (!removeResult.success) {
+                // Log other, non-auth-related errors
+                log(`API-${node.id}-Error`, `Failed to remove app @@YELLOW@@${mainAppName}##: ${removeResult.error}`);
+            } else {
+                log(`AUTO-${node.id}`, `Successfully sent removal request for @@YELLOW@@${mainAppName}##.`);
             }
         }
     }

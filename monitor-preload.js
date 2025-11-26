@@ -61,12 +61,14 @@ function hideSideMenu() {
     const bookmarkSelector = '.bookmark-wrapper';
     const themeSwitchSelector = '.feather-sun';
     const finalIconSelector = '[data-v-2ed358b2]';
+    const githubLinkSelector = 'a[href="https://github.com/runonflux/flux"]';
     style.innerHTML = `
       ${menuSelector} { display: none !important; }
       ${menuToggleSelector} { display: none !important; }
       ${bookmarkSelector} { display: none !important; }
       ${themeSwitchSelector} { display: none !important; }
       ${finalIconSelector} { display: none !important; }
+      ${githubLinkSelector} { display: none !important; }
     `;
     document.head.appendChild(style);
     log('Injected CSS to hide UI elements.');
