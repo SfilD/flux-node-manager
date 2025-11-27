@@ -1,14 +1,62 @@
 # flux-auto-deleter
 
-## Процесс разработки (Development Workflow)
+An Electron application to monitor Flux nodes and automatically delete specific running applications.
 
-Этот раздел описывает уникальную среду разработки и тестирования проекта.
+## Architecture
 
-- **Среда разработки:** Код пишется и редактируется в среде WSL (Windows Subsystem for Linux) дистрибутива **Ubuntu-22.04**.
+The application is built on Electron and has a standard main/renderer process architecture, enhanced with modern security practices.
 
-- **Среда выполнения и тестирования:** Для фактического запуска и тестирования файлы проекта копируются на виртуальную машину VMware с **Windows 10 Pro**.
+1.  **Main Process (`monitor-main.js`)**
+    *   Acts as the backend of the application.
+    *   Reads configuration from `settings.ini`.
+    *   Handles application lifecycle, window management, and all IPC events.
+    *   Performs node discovery by scanning IPs in parallel.
+    *   Creates and manages `BrowserView` instances for each discovered node.
+    *   Runs the core automation cycle for deleting applications.
+    *   Encrypts and stores sensitive tokens in memory using `safeStorage`.
 
-- **Рабочая директория на Windows:** На виртуальной машине Windows проект располагается в директории `C:\Projects\flux-auto-deleter\`.
+2.  **Renderer Process (UI)**
+    *   **Shell (`shell.html`, `shell-renderer.js`):** The main application window. It provides the tabbed navigation, a quick access toolbar, and the log viewer. It communicates with the main process via a secure `contextBridge` (`window.electronAPI`).
+    *   **Preloader (`preloader.html`, `preloader-renderer.js`):** A simple window shown during the initial node discovery process.
 
-**Ключевой момент:** Все команды для запуска и проверки работоспособности (например, `npm start`) должны выполняться **только в среде Windows 10 Pro** на виртуальной машине, а не в WSL.
+3.  **Preload Scripts**
+    *   **`monitor-preload.js`:** Injected into the `BrowserView` of each Flux node. Its primary responsibility is to poll `localStorage` to detect the `zelidauth` token when a user logs in. It then sends this token to the main process to initiate the automation cycle. It also injects CSS to hide extraneous UI elements from the node's webpage.
+    *   **`shell-preload.js` & `preloader-preload.js`:** These scripts securely expose necessary IPC channels (`send`, `on`) to their respective renderer processes using `contextBridge`, in line with modern Electron security standards (`contextIsolation: true`).
 
+## Used API Endpoints
+
+The application interacts with the following Flux node API endpoints:
+
+-   `GET /apps/listrunningapps`
+    *   **Purpose:** Used both to verify that a node is alive during the discovery phase and to fetch the list of currently running applications for the automation cycle.
+    *   **Authentication:** Not required.
+
+-   `GET /apps/appremove?appname={appName}`
+    *   **Purpose:** Sends the command to remove a specific application from the node.
+    *   **Authentication:** **Required.** This request uses the `zelidauth` header with the token captured by `monitor-preload.js`.
+
+## Troubleshooting
+
+-   **Problem: No nodes are found on startup.**
+    *   **Solution:**
+        1.  Verify that the IP addresses in `settings.ini` are correct and accessible from your machine.
+        2.  Check your internet connection.
+        3.  Ensure that a firewall or antivirus is not blocking the application's network requests.
+
+-   **Problem: Automation cycle does not start for a specific node.**
+    *   **Solution:** Ensure you have successfully logged into the Flux node's UI within the corresponding tab in the application. The automation cycle only begins after a valid `zelidauth` token is detected.
+
+-   **Problem: The application crashes or behaves unexpectedly.**
+    *   **Solution:** Check the `session.log` file located in the application's root directory. For more detailed diagnostics, set `Debug = true` in `settings.ini` and restart the application to generate more verbose logs.
+
+## Development Workflow
+
+This section describes the unique development and testing environment for the project.
+
+-   **Development Environment:** Code is written and edited in a WSL (Windows Subsystem for Linux) environment, specifically the **Ubuntu-22.04** distribution.
+
+-   **Execution and Testing Environment:** For actual execution and testing, the project files are copied to a VMware virtual machine running **Windows 10 Pro**.
+
+-   **Working Directory on Windows:** On the Windows VM, the project is located at `C:\Projects\flux-auto-deleter\`.
+
+**Key Point:** All runtime commands (e.g., `npm start`) must be executed **only within the Windows 10 Pro environment** on the virtual machine, not in WSL.

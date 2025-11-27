@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { ipcRenderer } = require('electron');
 
 // --- Argument Parsing ---
 let nodeId = 'unknown';
@@ -53,16 +53,16 @@ function logState(context) {
 // --- Main Logic ---
 
 function hideSideMenu() {
-  try {
-    const style = document.createElement('style');
-    style.type = 'text/css';
-    const menuSelector = '.main-menu';
-    const menuToggleSelector = '.feather-menu';
-    const bookmarkSelector = '.bookmark-wrapper';
-    const themeSwitchSelector = '.feather-sun';
-    const finalIconSelector = '[data-v-2ed358b2]';
-    const githubLinkSelector = 'a[href="https://github.com/runonflux/flux"]';
-    style.textContent = `
+    try {
+        const style = document.createElement('style');
+        style.type = 'text/css';
+        const menuSelector = '.main-menu';
+        const menuToggleSelector = '.feather-menu';
+        const bookmarkSelector = '.bookmark-wrapper';
+        const themeSwitchSelector = '.feather-sun';
+        const finalIconSelector = '[data-v-2ed358b2]';
+        const githubLinkSelector = 'a[href="https://github.com/runonflux/flux"]';
+        style.textContent = `
       ${menuSelector} { display: none !important; }
       ${menuToggleSelector} { display: none !important; }
       ${bookmarkSelector} { display: none !important; }
@@ -70,11 +70,11 @@ function hideSideMenu() {
       ${finalIconSelector} { display: none !important; }
       ${githubLinkSelector} { display: none !important; }
     `;
-    document.head.appendChild(style);
-    log('Injected CSS to hide UI elements.');
-  } catch (e) {
-    log(`Error injecting CSS: ${e.message}`);
-  }
+        document.head.appendChild(style);
+        log('Injected CSS to hide UI elements.');
+    } catch (e) {
+        log(`Error injecting CSS: ${e.message}`);
+    }
 }
 
 function initializeMonitor() {

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This project, `flux-auto-deleter`, is an Electron-based desktop application designed to monitor and manage "Flux nodes" on a local network. Its primary function is to automatically log into these nodes and periodically remove specific, predefined applications. The application provides a multi-tabbed interface where each tab displays the web UI of a discovered Flux node, with an aggregated logging panel to show real-time activity.
+This project, `flux-auto-deleter`, is an Electron-based desktop application designed to monitor and manage "Flux nodes" on a local network. Its primary function is to automatically remove specific, predefined applications after a user has logged into the node's web UI. The application provides a multi-tabbed interface where each tab displays the web UI of a discovered Flux node, with an aggregated logging panel to show real-time activity.
 
 **Key Technologies:**
 - **Framework:** Electron
@@ -12,11 +12,11 @@ This project, `flux-auto-deleter`, is an Electron-based desktop application desi
 
 **Architecture:**
 The application consists of three main parts:
-1.  **Main Process (`monitor-main.js`):** The backend of the Electron app. It handles node discovery, window management, and the core automation logic. It reads settings from `settings.ini`, validates them, and discovers nodes by scanning specified IP addresses in parallel. For each discovered node, it creates an Electron `BrowserView`. It uses modern Electron security practices with `contextIsolation` enabled and encrypts sensitive tokens in memory using `safeStorage`.
-2.  **Renderer Process (`shell.html`, `shell-renderer.js`):** The main UI of the application. It displays a tab for each discovered node, a log viewer, and a quick access toolbar. It communicates with the main process via a secure `contextBridge`.
+1.  **Main Process (`monitor-main.js`):** The backend of the Electron app. It handles node discovery, window management, and the core automation logic. It reads settings from `settings.ini`, validates them, and discovers nodes by scanning specified IP addresses in parallel. For each discovered node, it creates an Electron `BrowserView`. It uses modern Electron security practices with `contextIsolation` enabled and encrypts sensitive tokens in memory using `safeStorage`. Global error handlers (`uncaughtException`, `unhandledRejection`) are in place to ensure stability.
+2.  **Renderer Process (UI):** The main UI of the application. It displays a tab for each discovered node, a log viewer, and a quick access toolbar. It communicates with the main process via a secure `contextBridge`.
 3.  **Preload Scripts:**
-    *   `monitor-preload.js`: Injected into the web content of each Flux node's UI (`BrowserView`). Its crucial role is to monitor the node's `localStorage` for an authentication token (`zelidauth`). When a token is found, it sends it to the main process, enabling the automation cycle. It also injects CSS to hide unwanted UI elements.
-    *   `shell-preload.js` & `preloader-preload.js`: Securely expose IPC functionality to their respective renderer processes using `contextBridge`.
+    *   `monitor-preload.js`: Injected into the web content of each Flux node's UI (`BrowserView`). Its crucial role is to poll `localStorage` to detect the `zelidauth` token when a user logs in. It then sends this token to the main process, enabling the automation cycle. It also injects CSS to hide extraneous UI elements.
+    *   `shell-preload.js` & `preloader-preload.js`: Securely expose IPC functionality to their respective renderer processes using `contextBridge`, in line with modern Electron security standards.
 
 ## Building and Running
 
@@ -46,6 +46,7 @@ The development workflow specifies that coding occurs in a WSL environment, but 
 - **Inter-Process Communication (IPC):** The application relies on Electron's `contextBridge` for secure IPC between the main process and its own renderer processes.
 - **UI:** The UI is kept simple, with the main window acting as a "shell" that hosts the web content of the nodes. The `monitor-preload.js` script actively hides parts of the original web UI to create a more integrated experience. External links are disabled to prevent navigating away from the node UI.
 - **Error Handling & Stability:**
+    - Global handlers for `uncaughtException` and `unhandledRejection` ensure the app logs critical errors and terminates gracefully.
     - Network requests are wrapped in a `fetchWithTimeout` utility to prevent hangs.
     - API call responses are validated to ensure stability.
     - The in-memory log history is capped to prevent memory leaks.

@@ -39,7 +39,10 @@ btnSettings.addEventListener('click', () => {
 
 // --- Layout and Bounds Management ---
 
-// Sends the precise bounds of the content area to the main process
+/**
+ * Sends the precise bounds of the content area to the main process
+ * so it can correctly position the BrowserView.
+ */
 function sendContentBounds() {
     const rect = contentContainer.getBoundingClientRect();
     window.electronAPI.send('update-view-bounds', {
@@ -50,7 +53,12 @@ function sendContentBounds() {
     });
 }
 
-// Recalculates and applies dynamic styles and layouts
+/**
+ * Recalculates and applies dynamic styles and layouts, such as font sizes
+ * and the width of the tabs column based on its content.
+ * @param {string} fontName The name of the font to apply.
+ * @param {number} fontSize The base font size to apply.
+ */
 function updateThemeAndLayout(fontName, fontSize) {
     // 1. Apply Font Styles
     const bodyStyle = document.body.style;
@@ -107,9 +115,13 @@ resizeObserver.observe(contentContainer);
 
 // --- Log Viewer Functions ---
 
+/**
+ * Adds a new message to the log viewer, parsing custom color tags.
+ * @param {string} message The log message to add.
+ */
 function addLogMessage(message) {
     const p = document.createElement('p');
-    const colorRegex = /\@\@(RED|GREEN|YELLOW)\@\@(.*?)\#\#/g;
+    const colorRegex = /@@(RED|GREEN|YELLOW)@@(.*?)##/g;
     let lastIndex = 0;
     let match;
 
@@ -120,7 +132,7 @@ function addLogMessage(message) {
         }
         
         // Add the colored span
-        const [fullMatch, colorName, text] = match;
+        const [, colorName, text] = match;
         const span = document.createElement('span');
         span.textContent = text;
         

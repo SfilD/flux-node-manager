@@ -6,6 +6,21 @@ const ini = require('ini');
 const net = require('net');
 const dns = require('dns');
 
+// --- Global Error Handlers ---
+process.on('uncaughtException', (error, origin) => {
+    const errorMsg = `An uncaught exception occurred: ${error.stack || error}`;
+    log('FATAL-ERROR', errorMsg, origin);
+    dialog.showErrorBox('Critical Error', 'A critical, unrecoverable error occurred. The application will now close.\n\n' + errorMsg);
+    app.quit();
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    const reasonMsg = reason.stack || reason;
+    log('FATAL-ERROR', 'An unhandled promise rejection occurred:', reasonMsg);
+    dialog.showErrorBox('Critical Error', 'A critical, unrecoverable error occurred. The application will now close.\n\n' + reasonMsg);
+    app.quit();
+});
+
 // Disable hardware acceleration to prevent rendering issues
 app.disableHardwareAcceleration();
 
@@ -28,7 +43,7 @@ const TARGET_APP_PREFIXES = (config.General.TargetAppPrefixes || '').split(',').
 
 let automationIntervalSeconds = parseInt(config.General.AutomationIntervalSeconds, 10) || 60;
 if (automationIntervalSeconds < 60) {
-    log('CONFIG-Warning', `AutomationIntervalSeconds was set below the minimum of 60s and has been adjusted to 60s.`);
+    log('CONFIG-Warning', 'AutomationIntervalSeconds was set below the minimum of 60s and has been adjusted to 60s.');
     automationIntervalSeconds = 60;
 }
 const AUTOMATION_INTERVAL = automationIntervalSeconds * 1000;
@@ -45,13 +60,15 @@ const MAX_LOG_HISTORY = parseInt(config.General.MaxLogHistory) || 1000;
 // --- Global State ---
 let preloaderWindow = null;
 let mainWindow = null;
-let activeViewId = null;
 let NODES = []; // This will be populated dynamically
 let logStream = null; // For file logging
 let logHistory = []; // Persistent log history for the session
 
 // --- Logging System ---
 
+/**
+ * Sets up the file stream for logging session output to a file.
+ */
 function setupFileLogger() {
     const logFilePath = path.join(__dirname, LOG_FILE);
     const writeMode = LOG_CLEAR_ON_START ? 'w' : 'a';
@@ -66,7 +83,12 @@ function setupFileLogger() {
     }
 }
 
-// Central dispatcher for all log messages
+/**
+ * Central dispatcher for all log messages. It pushes messages to a history array,
+ * sends them to the UI, and writes them to a file. It also enforces a maximum log size.
+ * @param {string} message The log message to dispatch.
+ * @param {boolean} [isDebug=false] Whether the message is a debug-level message.
+ */
 function dispatchLog(message, isDebug = false) {
     if (isDebug && !DEBUG_MODE) {
         return;
@@ -91,7 +113,12 @@ function dispatchLog(message, isDebug = false) {
     }
 }
 
-// Recursively masks sensitive data in objects and arrays
+/**
+ * Masks sensitive data within an object or array before logging.
+ * Recursively checks for keys containing sensitive keywords and replaces their values.
+ * @param {any} data The data to sanitize.
+ * @returns {any} The sanitized data.
+ */
 function maskSensitiveData(data) {
     if (data === null || typeof data !== 'object') {
         return data;
@@ -129,7 +156,11 @@ function maskSensitiveData(data) {
 }
 
 
-// Standard-level log
+/**
+ * Formats and dispatches a standard-level log message.
+ * @param {string} prefix The prefix to identify the log source (e.g., 'MAIN', 'API-Error').
+ * @param {...any} args The rest of the message parts to log.
+ */
 function log(prefix, ...args) {
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
@@ -143,7 +174,11 @@ function log(prefix, ...args) {
     dispatchLog(message, false);
 }
 
-// Debug-level log
+/**
+ * Formats and dispatches a debug-level log message. Only logs if DEBUG_MODE is true.
+ * @param {string} prefix The prefix to identify the log source.
+ * @param {...any} args The rest of the message parts to log.
+ */
 function logDebug(prefix, ...args) {
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
@@ -157,37 +192,55 @@ function logDebug(prefix, ...args) {
     dispatchLog(message, true);
 }
 
+/**
+ * A wrapper for the fetch API that adds a timeout.
+ * @param {string} url The URL to fetch.
+ * @param {object} [options={}] Fetch options.
+ * @param {number} [timeout=10000] The timeout in milliseconds.
+ * @returns {Promise<Response>} A promise that resolves with the fetch Response object.
+ * @throws {Error} Throws an error if the request times out or fails.
+ */
 async function fetchWithTimeout(url, options = {}, timeout = 10000) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error.name === 'AbortError') {
-      throw new Error('Request timeout');
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout');
+        }
+        throw error;
     }
-    throw error;
-  }
 }
 
 // --- Application Lifecycle Functions ---
 
+/**
+ * Checks for a basic internet connection by attempting a DNS lookup.
+ * @returns {Promise<boolean>} A promise that resolves to true if the lookup is successful, false otherwise.
+ */
 async function checkInternetConnection() {
     return new Promise(resolve => {
         dns.lookup('google.com', err => {
             if (err && err.code === 'ENOTFOUND') {
                 resolve(false);
-            } else {
+            }
+            else {
                 resolve(true);
             }
         });
     });
 }
 
+/**
+ * Checks if a Flux node exists and is responsive at a given API URL.
+ * @param {string} apiUrl The base API URL of the node to check.
+ * @returns {Promise<boolean>} A promise that resolves to true if the node is responsive, false otherwise.
+ */
 async function checkFluxNodeExistence(apiUrl) {
     try {
         await fetchWithTimeout(`${apiUrl}/apps/listrunningapps`, { method: 'GET' }, 10000);
@@ -198,6 +251,12 @@ async function checkFluxNodeExistence(apiUrl) {
     }
 }
 
+/**
+ * Scans a single IP address for all possible Flux nodes (up to 8).
+ * @param {string} ip The IP address to scan.
+ * @param {string} ipPrefix A prefix for generating unique node IDs.
+ * @returns {Promise<object[]>} A promise that resolves to an array of found node objects.
+ */
 async function discoverNodesOnIp(ip, ipPrefix) {
     log('DISCOVERY', `Scanning IP: ${ip} with prefix ${ipPrefix}`);
     const promises = [];
@@ -236,6 +295,10 @@ async function discoverNodesOnIp(ip, ipPrefix) {
     return results.filter(node => node !== null);
 }
 
+/**
+ * Discovers all nodes on all IPs specified in the configuration by running scans in parallel.
+ * @param {string[]} ips An array of IP addresses to scan.
+ */
 async function discoverAllNodes(ips) {
     log('DISCOVERY', 'Starting node discovery across all IPs...');
     const discoveryPromises = ips.map((ip, index) => {
@@ -249,6 +312,9 @@ async function discoverAllNodes(ips) {
     log('DISCOVERY', `Total nodes found across all IPs: ${NODES.length}`);
 }
 
+/**
+ * Clears the cache for all discovered node sessions.
+ */
 async function clearAllCaches() {
     log('CACHE', 'Starting to clear all session caches...');
     for (const node of NODES) {
@@ -263,6 +329,10 @@ async function clearAllCaches() {
     log('CACHE', 'Finished clearing all session caches.');
 }
 
+/**
+ * Creates and shows a preloader window while node discovery runs in the background.
+ * Quits the app if no internet connection is found.
+ */
 async function showPreloaderAndDiscover() {
     setupFileLogger();
 
@@ -316,6 +386,9 @@ async function showPreloaderAndDiscover() {
     preloaderWindow.show();
 }
 
+/**
+ * Creates the main application window and attaches a BrowserView for each discovered node.
+ */
 function createMainWindow() {
     if (NODES.length === 0) {
         const errorTitle = 'No Nodes Found';
@@ -387,6 +460,11 @@ function createMainWindow() {
     }
 }
 
+/**
+ * Fetches the list of running applications from a node.
+ * @param {object} node The node object.
+ * @returns {Promise<object[]>} A promise that resolves to an array of running application objects, or an empty array on failure.
+ */
 async function listRunningApps(node) {
     // This is a public endpoint, no token is needed.
     try {
@@ -413,6 +491,12 @@ async function listRunningApps(node) {
     }
 }
 
+/**
+ * Sends a request to remove a specific application from a node.
+ * @param {object} node The node object, containing the encrypted token.
+ * @param {string} appName The name of the application to remove.
+ * @returns {Promise<object>} A promise that resolves to an object indicating success or failure.
+ */
 async function removeApp(node, appName) {
     if (!node.token) {
         const errorMsg = 'Not logged in. Token is missing.';
@@ -449,6 +533,10 @@ async function removeApp(node, appName) {
     }
 }
 
+/**
+ * Runs a single automation cycle for a given node: fetches running apps, identifies targets, and removes them.
+ * @param {object} node The node object to run the cycle on.
+ */
 async function runAutomationCycle(node) {
     log(`AUTO-${node.id}`, 'Cycle started.');
 

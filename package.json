@@ -4,15 +4,17 @@
   "description": "A simple Electron app to monitor web session data.",
   "main": "monitor-main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "lint": "eslint ."
   },
   "author": "Gemini",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^39.0.0"
+    "electron": "^39.0.0",
+    "eslint": "^8.57.1"
   },
   "dependencies": {
-    "node-fetch": "^2.7.0",
-    "ini": "^4.1.2"
+    "ini": "^4.1.2",
+    "node-fetch": "^2.7.0"
   }
 }
