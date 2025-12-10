@@ -1,33 +1,49 @@
 {
   "name": "flux-session-monitor",
   "version": "1.0.0",
-  "description": "A simple Electron app to monitor web session data.",
+  "description": "Automated tool for managing Flux Nodes applications. Developed by SfilD Labs with Gemini AI assistance.",
   "main": "monitor-main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder",
+    "dist": "set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder && node package-bundle.js",
     "lint": "eslint ."
   },
   "build": {
     "appId": "com.flux.autodeleter",
-    "productName": "Flux Auto Deleter",
+    "productName": "FluxAutoDeleter",
+    "extraFiles": [
+      {
+        "from": "settings.dist.ini",
+        "to": "settings.ini"
+      },
+      "docs",
+      "LICENSE.txt"
+    ],
     "directories": {
       "output": "dist"
     },
     "win": {
       "target": [
+        "nsis",
+        "portable",
         "dir"
       ],
       "sign": null
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "license": "LICENSE.txt",
+      "artifactName": "${productName}_Setup_${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}_Portable_${version}.${ext}"
     }
   },
-  "author": "Gemini",
-  "license": "ISC",
+  "author": "SfilD Labs",
+  "license": "Freeware",
   "devDependencies": {
+    "archiver": "^5.3.1",
     "electron": "^39.0.0",
     "electron-builder": "^24.9.1",
     "eslint": "^8.57.1"

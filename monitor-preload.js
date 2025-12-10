@@ -101,14 +101,16 @@ function initializeMonitor() {
         }
     };
 
-    setInterval(checkAuthState, 2000);
-
+    // Check on page load fully
     window.addEventListener('load', () => {
         log('Page fully loaded. Performing initial state log.');
         logState('Initial State (After Load)');
         checkAuthState();
     });
+
+    // Check periodically for changes in localStorage
+    // Increased interval to 3000ms to reduce CPU load with many active nodes
+    setInterval(checkAuthState, 3000);
 }
 
 window.addEventListener('DOMContentLoaded', initializeMonitor);
-

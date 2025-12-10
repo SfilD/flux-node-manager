@@ -3,7 +3,6 @@ const logViewer = document.getElementById('log-viewer');
 const contentContainer = document.getElementById('content-container');
 
 // Toolbar buttons
-const btnExit = document.getElementById('btn-exit');
 const btnReset = document.getElementById('btn-reset');
 const btnAbout = document.getElementById('btn-about');
 const btnDocs = document.getElementById('btn-docs');
@@ -13,10 +12,6 @@ let activeTabId = null;
 let isDebugMode = false;
 
 // --- Event Listeners ---
-
-btnExit.addEventListener('click', () => {
-    window.electronAPI.send('app-quit');
-});
 
 btnReset.addEventListener('click', () => {
     if (activeTabId) {

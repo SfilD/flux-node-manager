@@ -10,14 +10,14 @@ const dns = require('dns');
 process.on('uncaughtException', (error, origin) => {
     const errorMsg = `An uncaught exception occurred: ${error.stack || error}`;
     log('FATAL-ERROR', errorMsg, origin);
-    dialog.showErrorBox('Critical Error', 'A critical, unrecoverable error occurred. The application will now close.\n\n' + errorMsg);
+    dialog.showErrorBox('Critical Error / Критическая ошибка', 'A critical, unrecoverable error occurred. The application will now close.\n\nПроизошла критическая, неустранимая ошибка. Приложение будет закрыто.\n\nError details / Детали ошибки:\n' + errorMsg);
     app.quit();
 });
 
 process.on('unhandledRejection', (reason) => {
     const reasonMsg = reason.stack || reason;
     log('FATAL-ERROR', 'An unhandled promise rejection occurred:', reasonMsg);
-    dialog.showErrorBox('Critical Error', 'A critical, unrecoverable error occurred. The application will now close.\n\n' + reasonMsg);
+    dialog.showErrorBox('Critical Error / Критическая ошибка', 'A critical, unrecoverable error occurred. The application will now close.\n\nПроизошла критическая, неустранимая ошибка. Приложение будет закрыто.\n\nError details / Детали ошибки:\n' + reasonMsg);
     app.quit();
 });
 
@@ -27,8 +27,32 @@ app.disableHardwareAcceleration();
 // Suppress non-fatal Chromium logs (like SSL handshake informational errors)
 app.commandLine.appendSwitch('log-level', '3');
 
+// --- Path Resolution Helper ---
+function resolveBasePath() {
+    // 1. Development Environment (Top priority to ensure 'npm start' works exactly as before)
+    if (!app.isPackaged) {
+        return __dirname;
+    }
+    // 2. Portable App (Electron Builder specific environment variable)
+    if (process.env.PORTABLE_EXECUTABLE_DIR) {
+        return process.env.PORTABLE_EXECUTABLE_DIR;
+    }
+    // 3. Installed / Unpacked Executable
+    // Use the directory of the executable itself to find side-by-side files
+    return path.dirname(app.getPath('exe'));
+}
+
+const BASE_PATH = resolveBasePath();
+
 // --- Load Configuration from settings.ini ---
-const config = ini.parse(fs.readFileSync(path.join(__dirname, 'settings.ini'), 'utf-8'));
+let config;
+try {
+    const configPath = path.join(BASE_PATH, 'settings.ini');
+    config = ini.parse(fs.readFileSync(configPath, 'utf-8'));
+} catch (error) {
+    console.error(`Failed to load settings.ini from ${BASE_PATH}. Using empty config. Error:`, error);
+    config = { General: {} };
+}
 
 const SCAN_IPS = (config.General.ScanIPs || '')
     .split(',')
@@ -73,7 +97,7 @@ let logHistory = []; // Persistent log history for the session
  * Sets up the file stream for logging session output to a file.
  */
 function setupFileLogger() {
-    const logFilePath = path.join(__dirname, LOG_FILE);
+    const logFilePath = path.join(BASE_PATH, LOG_FILE);
     const writeMode = LOG_CLEAR_ON_START ? 'w' : 'a';
     try {
         logStream = fs.createWriteStream(logFilePath, { flags: writeMode });
@@ -246,7 +270,12 @@ async function checkInternetConnection() {
  */
 async function checkFluxNodeExistence(apiUrl) {
     try {
-        await fetchWithTimeout(`${apiUrl}/apps/listrunningapps`, { method: 'GET' }, 10000);
+        await fetchWithTimeout(`${apiUrl}/apps/listrunningapps`, { 
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        }, 10000);
         return true;
     } catch (error) {
         logDebug('DISCOVERY-Check', `Node check failed for ${apiUrl}: ${error.message}`);
@@ -333,6 +362,60 @@ async function clearAllCaches() {
 }
 
 /**
+ * Handles the "No Nodes Found" error with an interactive dialog.
+ * Allows the user to open settings or documentation before quitting.
+ */
+async function handleNoNodesError() {
+    const errorTitle = 'No Nodes Found / Узлы не найдены';
+    const errorMessage = `No active Flux nodes were found. Please check the following:
+1. The IP addresses in settings.ini are correct.
+2. Your internet connection is stable.
+3. A firewall or antivirus is not blocking the application's outgoing connections.
+
+--------------------------------------------------
+
+Активные узлы Flux не найдены. Пожалуйста, проверьте следующее:
+1. IP-адреса в файле settings.ini указаны верно.
+2. Ваше интернет-соединение стабильно.
+3. Брандмауэр или антивирус не блокируют исходящие соединения приложения.`;
+
+    log('MAIN-Error', 'No active nodes found. Waiting for user action...');
+
+    const locale = app.getLocale();
+    const isRu = locale && locale.toLowerCase().startsWith('ru');
+    
+    const buttons = isRu 
+        ? ['Открыть настройки', 'Открыть инструкцию', 'Выход'] 
+        : ['Open Settings', 'Open Docs', 'Exit'];
+
+    // Use preloaderWindow as parent if available, otherwise null
+    const parentWindow = (preloaderWindow && !preloaderWindow.isDestroyed()) ? preloaderWindow : null;
+
+    const { response } = await dialog.showMessageBox(parentWindow, {
+        type: 'error',
+        title: errorTitle,
+        message: errorTitle,
+        detail: errorMessage,
+        buttons: buttons,
+        defaultId: 0,
+        cancelId: 2,
+        noLink: true
+    });
+
+    if (response === 0) { // Settings
+        const settingsPath = path.join(BASE_PATH, 'settings.ini');
+        await shell.openPath(settingsPath);
+    } else if (response === 1) { // Docs
+        let docFileName = 'MANUAL_EN.md';
+        if (isRu) {
+            docFileName = 'MANUAL_RU.md';
+        }
+        const docPath = path.join(BASE_PATH, 'docs', docFileName);
+        await shell.openPath(docPath);
+    }
+}
+
+/**
  * Creates and shows a preloader window while node discovery runs in the background.
  * Quits the app if no internet connection is found.
  */
@@ -342,8 +425,7 @@ async function showPreloaderAndDiscover() {
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
         log('MAIN-Error', 'No internet connection or DNS lookup failed. Please check your network. Shutting down.');
-        // Use a dialog box for immediate user feedback before quitting
-        dialog.showErrorBox('Network Error', 'No internet connection or DNS lookup failed. Please check your network settings.');
+        dialog.showErrorBox('Network Error / Ошибка сети', 'No internet connection or DNS lookup failed. Please check your network settings.\n\nОтсутствует подключение к интернету или ошибка DNS. Пожалуйста, проверьте настройки сети.');
         app.quit();
         return;
     }
@@ -354,6 +436,7 @@ async function showPreloaderAndDiscover() {
         resizable: false,
         frame: false,
         alwaysOnTop: true,
+        icon: path.join(__dirname, 'assets', 'icon.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preloader-preload.js'),
             contextIsolation: true,
@@ -375,15 +458,24 @@ async function showPreloaderAndDiscover() {
         await discoverAllNodes(SCAN_IPS);
         await clearAllCaches();
         
-        // When done, close the preloader
-        if (preloaderWindow && !preloaderWindow.isDestroyed()) {
-            preloaderWindow.close();
+        if (NODES.length === 0) {
+            // Handle error without closing preloader immediately
+            await handleNoNodesError();
+            app.quit();
+        } else {
+            // When done, close the preloader
+            if (preloaderWindow && !preloaderWindow.isDestroyed()) {
+                preloaderWindow.close();
+            }
         }
     });
 
     preloaderWindow.on('closed', () => {
         preloaderWindow = null;
-        createMainWindow();
+        // Only create main window if nodes exist
+        if (NODES.length > 0) {
+            createMainWindow();
+        }
     });
 
     preloaderWindow.show();
@@ -393,30 +485,23 @@ async function showPreloaderAndDiscover() {
  * Creates the main application window and attaches a BrowserView for each discovered node.
  */
 function createMainWindow() {
-    if (NODES.length === 0) {
-        const errorTitle = 'No Nodes Found';
-        const errorMessage = `No active Flux nodes were found. Please check the following:
-1. The IP addresses in settings.ini are correct.
-2. Your internet connection is stable.
-3. A firewall or antivirus is not blocking the application's outgoing connections.`;
-        
-        log('MAIN-Error', errorMessage.replace(/\n/g, ' '));
-        dialog.showErrorBox(errorTitle, errorMessage);
-        app.quit();
-        return;
-    }
-
+    // Note: The NODES check is now done in showPreloaderAndDiscover to prevent premature closing.
+    
     mainWindow = new BrowserWindow({
         width: WINDOW_WIDTH,
         height: WINDOW_HEIGHT,
         resizable: false,
         maximizable: false,
+        icon: path.join(__dirname, 'assets', 'icon.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'shell-preload.js'),
             contextIsolation: true,
             nodeIntegration: false
         }
     });
+    
+    // Increase listener limit to prevent warnings when many nodes (BrowserViews) are attached
+    mainWindow.setMaxListeners(100);
 
     mainWindow.setMenu(null);
     mainWindow.loadFile('shell.html');
@@ -446,6 +531,9 @@ function createMainWindow() {
                 additionalArguments: [`--node-id=${node.id}`]
             }
         });
+        
+        // Set a standard Chrome User-Agent to avoid reCAPTCHA issues
+        view.webContents.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
         mainWindow.addBrowserView(view);
         view.setAutoResize({ width: true, height: true });
@@ -605,38 +693,55 @@ async function runAutomationCycle(node) {
 }
 
 // New IPC Handlers for Toolbar
-ipcMain.on('app-quit', () => {
-    log('MAIN', 'Application quit requested from UI.');
-    app.quit();
-});
-
 ipcMain.on('show-about', async () => {
     const appVersion = app.getVersion(); // Get version from package.json directly
-    await dialog.showMessageBox(mainWindow, {
+    const { response } = await dialog.showMessageBox(mainWindow, {
         type: 'info',
-        title: 'About Flux Node Monitor',
-        message: 'Flux Node Monitor',
+        title: 'About Flux Auto-Deleter',
+        message: 'Flux Auto-Deleter',
         detail: `Version: ${appVersion}\nAuthor: ${require('./package.json').author}\nDescription: ${require('./package.json').description}`,
-        buttons: ['OK']
+        buttons: ['OK', 'View License'],
+        defaultId: 0,
+        cancelId: 0
     });
+
+    if (response === 1) { // 'View License' clicked
+        const licensePath = path.join(BASE_PATH, 'LICENSE.txt');
+        shell.openPath(licensePath).then((err) => {
+            if (err) {
+                log('MAIN-Error', `Failed to open LICENSE.txt at ${licensePath}: ${err}`);
+            } else {
+                log('MAIN', `Opened LICENSE.txt: ${licensePath}`);
+            }
+        });
+    }
 });
 
 ipcMain.on('open-docs', () => {
-    const readmePath = path.join(__dirname, 'README.md');
+    const locale = app.getLocale();
+    let docFileName = 'MANUAL_EN.md'; // Default to English
+
+    if (locale && locale.toLowerCase().startsWith('ru')) {
+        docFileName = 'MANUAL_RU.md';
+    }
+
+    log('MAIN', `User requested docs. System locale: ${locale}. Opening: ${docFileName}`);
+
+    const readmePath = path.join(BASE_PATH, 'docs', docFileName);
     shell.openPath(readmePath).then((err) => {
         if (err) {
-            log('MAIN-Error', `Failed to open README.md: ${err}`);
+            log('MAIN-Error', `Failed to open documentation at ${readmePath}: ${err}`);
         } else {
-            log('MAIN', `Opened README.md: ${readmePath}`);
+            log('MAIN', `Opened documentation: ${readmePath}`);
         }
     });
 });
 
 ipcMain.on('open-settings-file', () => {
-    const settingsPath = path.join(__dirname, 'settings.ini');
+    const settingsPath = path.join(BASE_PATH, 'settings.ini');
     shell.openPath(settingsPath).then((err) => {
         if (err) {
-            log('MAIN-Error', `Failed to open settings.ini: ${err}`);
+            log('MAIN-Error', `Failed to open settings.ini at ${settingsPath}: ${err}`);
         } else {
             log('MAIN', `Opened settings.ini: ${settingsPath}`);
         }
