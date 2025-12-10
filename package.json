@@ -41,7 +41,7 @@
     }
   },
   "author": "SfilD Labs",
-  "license": "Freeware",
+  "license": "Apache-2.0",
   "devDependencies": {
     "archiver": "^5.3.1",
     "electron": "^39.0.0",
