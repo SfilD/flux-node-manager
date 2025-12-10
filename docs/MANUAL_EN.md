@@ -195,3 +195,20 @@ The application stores session data (node authorization) in a separate system fo
 
 *   **Path:** `%AppData%\flux-session-monitor`
     *(Usually `C:\Users\USERNAME\AppData\Roaming\flux-session-monitor`)*
+
+## 10. Troubleshooting
+
+**Issue:** Authentication failures or automatic deletion stops working.
+**Symptoms:**
+*   You successfully signed the message in ZelCore, but the node's web interface does not respond, and authorization does not occur.
+*   The node's web interface shows that you are authorized, but automation is not working.
+*   The application stopped removing target apps on a specific node without visible reasons.
+*   The application tries to remove the same app in every cycle but fails (often happens after a FluxOS version update).
+
+**Solution:**
+A common cause is a FluxOS version update (e.g., from v7.2.0 to v7.3.0) or session cache corruption. The old token becomes invalid, even though the session looks active.
+
+1.  Open the tab of the problematic node.
+2.  Click the **Reset** button on the top toolbar.
+3.  This will completely clear cookies and cache *for this node only* and reload the page.
+4.  Perform the Login procedure again. Automation should resume.
