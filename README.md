@@ -2,6 +2,16 @@
 
 An Electron application to monitor Flux nodes and automatically delete specific running applications.
 
+## Download & Installation
+
+Latest version: **v0.9.0**
+
+**[Download from GitHub Releases](https://github.com/SfilD/flux-auto-deleter/releases/latest)**
+
+You can choose between:
+*   **Portable (.zip):** No installation required. Just unzip and run `FluxAutoDeleter.exe`.
+*   **Installer (.exe):** Installs the application to your system and creates a desktop shortcut.
+
 ## Architecture
 
 The application is built on Electron and has a standard main/renderer process architecture, enhanced with modern security practices.
