@@ -15,7 +15,8 @@ const OUTPUT_ZIP_PATH = path.join(DIST_DIR, OUTPUT_ZIP_NAME);
 // Files to include in the bundle (relative to project root)
 // Note: settings.ini is handled separately (from settings.dist.ini)
 const EXTRA_FILES = [
-    'LICENSE.txt'
+    'LICENSE.txt',
+    'clean-session.bat'
 ];
 
 async function calculateChecksum(filePath) {
