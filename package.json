@@ -1,6 +1,6 @@
 {
   "name": "flux-session-monitor",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Automated tool for managing Flux Nodes applications. Developed by SfilD Labs with Gemini AI assistance.",
   "main": "monitor-main.js",
   "scripts": {
@@ -17,7 +17,8 @@
         "to": "settings.ini"
       },
       "docs",
-      "LICENSE.txt"
+      "LICENSE.txt",
+      "clean-session.bat"
     ],
     "directories": {
       "output": "dist"

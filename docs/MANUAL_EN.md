@@ -191,7 +191,7 @@ To ensure that the downloaded files are not corrupted or tampered with, you can 
 *   **Installer:** Use the standard Windows uninstaller ("Settings" -> "Apps").
 
 **Full Data Cleanup:**
-The application stores session data (node authorization) in a separate system folder. If you want to completely remove all traces or reset all authorizations, delete the following folder:
+The application stores session data (node authorization) in a separate system folder. If you want to completely remove all traces or reset all authorizations, run the included `clean-session.bat` script or manually delete the following folder:
 
 *   **Path:** `%AppData%\flux-session-monitor`
     *(Usually `C:\Users\USERNAME\AppData\Roaming\flux-session-monitor`)*
@@ -208,7 +208,5 @@ The application stores session data (node authorization) in a separate system fo
 **Solution:**
 A common cause is a FluxOS version update (e.g., from v7.2.0 to v7.3.0) or session cache corruption. The old token becomes invalid, even though the session looks active.
 
-1.  Open the tab of the problematic node.
-2.  Click the **Reset** button on the top toolbar.
-3.  This will completely clear cookies and cache *for this node only* and reload the page.
-4.  Perform the Login procedure again. Automation should resume.
+1.  **Try Tab Reset:** Open the tab of the problematic node and click the **Reset** button on the top toolbar. This will clear cookies/cache for this node and reload it. Then re-login.
+2.  **Full Reset:** If the above doesn't help or the app is crashing, close the application and run the `clean-session.bat` file located in the application folder. This will safely wipe all cached data and session files. Restart the application and log in again.
