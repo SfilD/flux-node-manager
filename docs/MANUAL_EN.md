@@ -214,3 +214,13 @@ A common cause is a FluxOS version update (e.g., from v7.2.0 to v7.3.0) or sessi
 
 1.  **Try Tab Reset:** Open the tab of the problematic node and click the **Reset** button on the top toolbar. This will clear cookies/cache for this node and reload it. Then re-login.
 2.  **Full Reset:** If the above doesn't help or the app is crashing, close the application and run the `clean-session.bat` file located in the application folder. This will safely wipe all cached data and session files. Restart the application and log in again.
+
+## 11. Support & Donations
+
+This software is Freeware. If you find it useful and want to support the developer, you can donate to the following addresses:
+
+*   **FLUX:** `t1RFqDyjAqH1gVgdowqfwRbmMxqgdiwD9dH`
+*   **BTC:** `bc1q2r73psn8zznzazx97h9cl4xj2mlywxmpsgydrx`
+*   **ETH / USDT (ERC20):** `0x75b3e6773cd61d35532bc82d70aa90aded2b0cb2`
+*   **TRON / USDT (TRC20):** `TLhZaC6dCkni74FZKtcDCe12zLUdpJFTk6`
+*   **TON / USDT (TON):** `UQB5XehHEvZmhxi6AP1lS1MMOatouQCerJld6IIjmg3wQktB`

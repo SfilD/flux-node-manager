@@ -73,3 +73,15 @@ This section describes the unique development and testing environment for the pr
 -   **Working Directory on Windows:** On the Windows VM, the project is located at `C:\Projects\flux-auto-deleter\`.
 
 **Key Point:** All runtime commands (e.g., `npm start`) must be executed **only within the Windows 10 Pro environment** on the virtual machine, not in WSL.
+
+## Support & Donations
+
+This software is provided free of charge under the Apache 2.0 License. If you find it useful and wish to support its development, voluntary donations are highly appreciated.
+
+**Crypto Addresses:**
+
+*   **FLUX:** `t1RFqDyjAqH1gVgdowqfwRbmMxqgdiwD9dH`
+*   **BTC:** `bc1q2r73psn8zznzazx97h9cl4xj2mlywxmpsgydrx`
+*   **ETH / USDT (ERC20):** `0x75b3e6773cd61d35532bc82d70aa90aded2b0cb2`
+*   **TRON / USDT (TRC20):** `TLhZaC6dCkni74FZKtcDCe12zLUdpJFTk6`
+*   **TON / USDT (TON):** `UQB5XehHEvZmhxi6AP1lS1MMOatouQCerJld6IIjmg3wQktB`
