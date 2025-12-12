@@ -1,6 +1,6 @@
 {
   "name": "flux-session-monitor",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Automated tool for managing Flux Nodes applications. Developed by SfilD Labs with Gemini AI assistance.",
   "main": "monitor-main.js",
   "scripts": {
