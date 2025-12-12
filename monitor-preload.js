@@ -114,6 +114,10 @@ function initializeMonitor() {
     
             if (versionElement) {
                 const currentVersionText = versionElement.textContent.trim();
+                
+                // Ignore incomplete version strings (e.g. just "FluxOS v" while loading)
+                if (currentVersionText.length < 10) return;
+
                 const lastKnownVersion = localStorage.getItem('last_known_flux_version');
     
                 if (lastKnownVersion && lastKnownVersion !== currentVersionText) {
