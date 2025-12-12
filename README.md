@@ -1,3 +1,5 @@
+[![English](https://img.shields.io/badge/lang-English-blue.svg)](README.md) [![Русский](https://img.shields.io/badge/lang-Русский-red.svg)](README.ru.md)
+
 # flux-auto-deleter
 
 An Electron application to monitor Flux nodes and automatically delete specific running applications.
