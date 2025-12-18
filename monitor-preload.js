@@ -75,10 +75,10 @@ function setupKioskMode() {
         if (target.closest('input') || target.closest('textarea')) return;
 
         // 5. BLOCK Navigation Links and Menu Items
-        if (target.closest('a') || 
-            target.closest('.v-list-item') || 
+        if (target.closest('a') ||
+            target.closest('.v-list-item') ||
             target.closest('.v-chip--link')
-           ) {
+        ) {
             // Check if it is a ZelCore link (allow it to bubble up to will-navigate or shell.openExternal)
             const link = target.closest('a');
             if (link && link.href && link.href.startsWith('zel:')) return;

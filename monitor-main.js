@@ -581,7 +581,7 @@ function createMainWindow() {
 
             } catch (err) {
                 event.preventDefault();
-                log(`NAV-${node.id}`, `Blocked invalid URL navigation`);
+                log(`NAV-${node.id}`, 'Blocked invalid URL navigation');
             }
         });
 
@@ -675,8 +675,8 @@ async function removeApp(node, appName) {
                 const errorMessage = errorData.message || JSON.stringify(errorData);
 
                 if (errorCode === 401 || errorCode === 403 || (typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('unauthorized'))) {
-                     log(`API-${node.id}-Error`, `Soft-fail: API returned 200 OK but body contains Unauthorized error.`);
-                     return { success: false, error: errorMessage, authError: true };
+                    log(`API-${node.id}-Error`, 'Soft-fail: API returned 200 OK but body contains Unauthorized error.');
+                    return { success: false, error: errorMessage, authError: true };
                 }
                 
                 return { success: false, error: errorMessage, authError: false };
