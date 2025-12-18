@@ -67,7 +67,7 @@ In the new ArcaneOS interface, Flux enables "Analytics Cookies" by default upon 
 To disable telemetry:
 1.  Click the **"Manage Cookies"** button (green text in the bottom status bar).
 2.  In the "Cookie Preferences" window, disable **"Analytics Cookies"**.
-3.  Click "Save Preferences".
+3.  Click "Only Necessary" or "Accept".
 *Note: This setting is stored in your local browser cache and may reset if you use the "Reset" button or clear session data using the `clean-session.bat` script.*
 
 ### Toolbar
