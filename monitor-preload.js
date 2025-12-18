@@ -52,6 +52,45 @@ function logState(context) {
 
 // --- Main Logic ---
 
+function setupKioskMode() {
+    window.addEventListener('click', (event) => {
+        const target = event.target;
+
+        // 1. Allow Login Button (in menu)
+        if (target.closest('.vertical-nav-login-button')) return;
+
+        // 2. Allow Interactions within Dialogs/Overlays (Login forms, confirmations)
+        if (target.closest('.v-overlay__content') || target.closest('.v-dialog')) return;
+
+        // 3. Allow Logout Button
+        const btn = target.closest('button');
+        if (btn) {
+            const txt = btn.textContent.trim().toLowerCase();
+            if (txt === 'logout' || btn.querySelector('.tabler-logout')) return;
+            // Also allow 'Login' buttons inside content area if they weren't caught by overlay check
+            if (txt.includes('login') || txt.includes('zelcore')) return;
+        }
+
+        // 4. Allow Inputs (for manual token entry)
+        if (target.closest('input') || target.closest('textarea')) return;
+
+        // 5. BLOCK Navigation Links and Menu Items
+        if (target.closest('a') || 
+            target.closest('.v-list-item') || 
+            target.closest('.v-chip--link')
+           ) {
+            // Check if it is a ZelCore link (allow it to bubble up to will-navigate or shell.openExternal)
+            const link = target.closest('a');
+            if (link && link.href && link.href.startsWith('zel:')) return;
+
+            // logDebug('UI: Blocked navigation interaction.'); // Uncomment for debugging
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, true); // Capture phase
+    log('Kiosk mode (UI blocking) enabled.');
+}
+
 function hideSideMenu() {
     try {
         const style = document.createElement('style');
@@ -62,6 +101,7 @@ function hideSideMenu() {
         const themeSwitchSelector = '.feather-sun';
         const finalIconSelector = '[data-v-2ed358b2]';
         const githubLinkSelector = 'a[href="https://github.com/runonflux/flux"]';
+        const fluxAiButtonSelector = '#flux-ai-button'; // New ArcaneOS element
         style.textContent = `
       ${menuSelector} { display: none !important; }
       ${menuToggleSelector} { display: none !important; }
@@ -69,6 +109,7 @@ function hideSideMenu() {
       ${themeSwitchSelector} { display: none !important; }
       ${finalIconSelector} { display: none !important; }
       ${githubLinkSelector} { display: none !important; }
+      ${fluxAiButtonSelector} { display: none !important; }
     `;
         document.head.appendChild(style);
         log('Injected CSS to hide UI elements.');
@@ -79,6 +120,7 @@ function hideSideMenu() {
 
 function initializeMonitor() {
     hideSideMenu();
+    setupKioskMode();
     log('Preload script injected. Monitoring authentication state...');
     let lastSentToken = null;
 

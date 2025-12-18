@@ -539,6 +539,52 @@ function createMainWindow() {
         // Set a standard Chrome User-Agent to avoid reCAPTCHA issues
         view.webContents.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
+        // --- Navigation Security ---
+        // 1. Block new windows (popups, target="_blank")
+        view.webContents.setWindowOpenHandler(({ url }) => {
+            logDebug(`NAV-${node.id}`, `Blocked new window attempt: ${url}`);
+            return { action: 'deny' };
+        });
+
+        // 2. Restrict navigation to the same origin AND specific paths
+        view.webContents.on('will-navigate', (event, targetUrl) => {
+            // Allow ZelCore deep links
+            if (targetUrl.startsWith('zel:')) {
+                logDebug(`NAV-${node.id}`, `Allowing ZelCore navigation: ${targetUrl}`);
+                event.preventDefault();
+                shell.openExternal(targetUrl);
+                return;
+            }
+
+            const currentUrl = view.webContents.getURL();
+            try {
+                const targetUrlObj = new URL(targetUrl);
+                const currentUrlObj = new URL(currentUrl);
+
+                // 1. Block different origins (external sites)
+                if (targetUrlObj.origin !== currentUrlObj.origin) {
+                    event.preventDefault();
+                    log(`NAV-${node.id}`, `Blocked external navigation to: ${targetUrl}`);
+                    return;
+                }
+
+                // 2. Strict Path Whitelist for internal navigation
+                // Allow root ('/') and login callbacks ('/id/...')
+                // Adjust this list if other critical paths are discovered
+                const isRoot = targetUrlObj.pathname === '/' || targetUrlObj.pathname === '/index.html';
+                const isLogin = targetUrlObj.pathname.startsWith('/id/');
+                
+                if (!isRoot && !isLogin) {
+                    event.preventDefault();
+                    log(`NAV-${node.id}`, `Blocked internal navigation to restricted path: ${targetUrl}`);
+                }
+
+            } catch (err) {
+                event.preventDefault();
+                log(`NAV-${node.id}`, `Blocked invalid URL navigation`);
+            }
+        });
+
         mainWindow.addBrowserView(view);
         view.setAutoResize({ width: true, height: true });
         view.webContents.loadURL(node.uiUrl);
