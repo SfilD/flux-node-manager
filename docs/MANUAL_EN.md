@@ -129,36 +129,56 @@ To allow the application to manage a node, you must authorize yourself in the Fl
 1.  Launch Flux Auto-Deleter.
 2.  Wait for the tabs with your nodes to load.
 3.  Switch to the tab of the desired node.
-4.  You will see the standard FluxOS login screen.
 
-**Login Methods:**
+The login process depends on your FluxOS version.
 
-1.  **Automated Login (ZelCore installed on this PC):**
-    1.  Click the **Fingerprint icon** (Login with Zelcore).
-    2.  The system will ask for permission to open the ZelCore application. Allow this action.
-    3.  In the ZelCore window that opens, click the "Sign and Send" button.
-    4.  You will be automatically logged into FluxOS.
+### A. New Interface (ArcaneOS / FluxOS v5+)
 
-2.  **Manual Login (ZelCore on another computer/device):**
-    *It is recommended to use ZelCore installed on a PC for security reasons.*
-    This section contains three fields: **Message**, **Address**, and **Signature**.
+**How to Log In:**
+1.  Locate the **Login** button at the very **bottom of the main left menu**. Click it.
+2.  A generic login window will appear with options (Google, Apple ID, Wallets, Manual).
+3.  Choose your preferred method (we recommend **Wallets** or **Manual**):
 
-    1.  Open **ZelCore** on your device.
-    2.  Go to the **Apps** section and select **Flux ID**.
-    3.  Click the first blue button at the top labeled **"Sign message"**.
-    4.  **Important:** Toggle the switch to select **"Sign with Flux ID"** (default is "Sign with coin").
-    5.  Click the **Copy** button to copy your Flux ID and paste it into the **Address** field in the Flux Auto-Deleter login window.
-    6.  In the Flux Auto-Deleter login window, copy the content of the **Message** field.
-    7.  Paste this text into ZelCore in the **"Message to sign"** field and click the blue **Sign message** button.
-    8.  Enter your d2FA PIN code.
-    9.  The "Message Signature" window will appear. Copy the resulting signature (by clicking the copy icon).
-    10. Paste this string into the **Signature** field in the Flux Auto-Deleter login window.
-    11. Click the large blue **Login** button.
+    *   **Method 1: Wallets -> ZelCore (Automatic)**
+        *   Click the **Wallets** button.
+        *   Select **ZelCore** from the list (ZelCore, SSP, WalletConnect, MetaMask).
+        *   The system will ask for permission to open the ZelCore application. Click **Open**.
+        *   In the ZelCore window, click **"Sign and Send"**.
+        *   You will be logged in automatically.
 
-    If everything is done correctly and the message has not expired, you will be logged in.
+    *   **Method 2: Manual (If ZelCore is on another device)**
+        *   Click the **Manual** button in the login window.
+        *   You will see fields for **Login Phrase** (Message) and **Signature**.
+        *   Open **ZelCore** on your device -> **Apps** -> **Flux ID**.
+        *   Click **"Sign message"**. Ensure **"Sign with Flux ID"** is selected.
+        *   Copy the **Login Phrase** from the app to ZelCore's "Message to sign" field.
+        *   Sign it with your PIN.
+        *   Copy the resulting **Signature** from ZelCore and paste it into the **Signature** field in the app.
+        *   Click **Login**.
+
+    *   *Note: Other methods (Google, Apple, MetaMask, SSP) may work but have not been explicitly verified with this tool.*
+
+**How to Log Out:**
+1.  Click the button with the **FluxOS logo** (or your avatar) in the **top-right corner** of the window.
+2.  A small dropdown menu will appear showing your ZelID.
+3.  Click the red **Logout** button.
+
+---
+
+### B. Legacy Interface (Standard FluxOS)
+
+**How to Log In:**
+1.  You will see the standard login screen with a fingerprint icon.
+2.  **Automatic:** Click the **Fingerprint icon** (Login with Zelcore) -> Open ZelCore -> Sign and Send.
+3.  **Manual:** Click "Login manually" (if available) or use the specific manual login section provided by the legacy interface, copying the Message and pasting the Signature.
+
+**How to Log Out:**
+*   Typically a "Logout" button in the sidebar or top menu.
+
+---
 
 **Once you are logged in:**
-*   A message **"Received LOGIN notification"** or **"Token detected"** will appear in the application logs (bottom panel).
+*   A message **"Received LOGIN notification"** will appear in the application logs (bottom panel).
 *   The automatic application deletion cycle will start after 5 seconds.
 
 ## 7. Updating the Application
@@ -210,7 +230,7 @@ The application stores session data (node authorization) in a separate system fo
 *   The application tries to remove the same app in every cycle but fails (often happens after a FluxOS version update).
 
 **Solution:**
-A common cause is a FluxOS version update (e.g., from v7.2.0 to v7.3.0) or session cache corruption. The old token becomes invalid, even though the session looks active.
+A common cause is a FluxOS version update (e.g., from v7.x.x to v8.0.0 ArcaneOS) or session cache corruption. The old token becomes invalid, even though the session looks active.
 
 1.  **Try Tab Reset:** Open the tab of the problematic node and click the **Reset** button on the top toolbar. This will clear cookies/cache for this node and reload it. Then re-login.
 2.  **Full Reset:** If the above doesn't help or the app is crashing, close the application and run the `clean-session.bat` file located in the application folder. This will safely wipe all cached data and session files. Restart the application and log in again.
