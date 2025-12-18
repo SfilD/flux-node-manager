@@ -6,7 +6,7 @@
 >
 > The application has been successfully tested and is fully functional on both **Legacy FluxOS** and the new **ArcaneOS**.
 >
-> *Note for ArcaneOS users:* Due to significant changes in the new web interface, some visual elements (like menus or sidebars) may not be automatically hidden as they are on Legacy nodes. However, the core functionality—login detection and automated app deletion—works correctly.
+> *Note for ArcaneOS users:* Due to significant changes in the new web interface, some visual elements (like menus or sidebars) may not be automatically hidden as they are on Legacy nodes. However, the core functionality-login detection and automated app deletion-works correctly.
 
 An Electron application to monitor Flux nodes and automatically delete specific running applications.
 

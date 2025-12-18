@@ -106,7 +106,7 @@ List the keywords to search for applications that should be deleted.
 If you specify `TargetAppPrefixes = Folding,Test`, the application will delete:
 *   `FoldingAtHome` (contains "Folding")
 *   `MyTestApp` (contains "Test")
-*   `New-folding-node` (contains "folding" — **WILL NOT DELETE** because the case does not match "Folding")
+*   `New-folding-node` (contains "folding" - **WILL NOT DELETE** because the case does not match "Folding")
 
 *Pro Tip:*
 To find the exact application name, open your node's address in a browser: `http://YOUR_NODE_IP:PORT/apps/localapps` (where PORT is your usual web interface port, e.g., 16126, 16136).
