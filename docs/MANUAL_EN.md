@@ -44,12 +44,23 @@ The application interface is intentionally simplified for maximum stability and 
 *   **Resizing:** If the default size does not suit you, you can change it manually in the `settings.ini` file (`WindowWidth` and `WindowHeight` parameters).
 
 ### Workspace
+The interface supports two display modes, toggled by a button in the top toolbar:
+
+1.  **Login Mode:**
+    *   **Tabs (Left):** List of nodes taking the full window height.
+    *   **Node Window (Top Right):** Occupies 75% of the height. Intended for password entry and authorization.
+    *   **Logs (Bottom Right):** A compact area (25% of height) for status monitoring.
+2.  **Monitor Mode:**
+    *   **Node Window:** Completely hidden to save space.
+    *   **Logs:** Occupy **100%** of the right column, providing maximum visibility for events.
+
+**Detailed Element Description:**
 1.  **Tabs Panel (Left):** A list of all your nodes.
     *   **Naming Format:** `ID [IP:Port]`.
     *   **Example:** `IP01-Node01 [1.2.3.4:16126]`.
     *   Click on a tab to switch to that node.
-2.  **Main Area (Right):** The web interface of the selected node (FluxOS). Here you log in and view node status.
-3.  **Log Panel (Bottom):** A "black box" displaying all program actions.
+2.  **Main Area:** Displays the FluxOS web interface or hides it, depending on the selected mode.
+3.  **Log Panel:** A "black box" displaying all program actions.
     *   **Line Format:** `[Date Time][SOURCE] Message`
     *   **Source Legend:**
         *   `[DISCOVERY]`: Node scanning and verification process.
@@ -74,6 +85,7 @@ To disable telemetry:
 Quick access buttons at the top of the window:
 
 *   **Reset:** Forcibly reloads the current tab and wipes all session data (cache, cookies, auth). Useful if the node interface freezes or login/logout fails.
+*   **Login / Monitor Mode:** Toggles the layout between authorization mode and full-screen log monitoring.
 *   **Settings:** Opens the `settings.ini` file in your default text editor.
 *   **Docs:** Opens this user manual.
 *   **About:** Shows the application version and license information.
