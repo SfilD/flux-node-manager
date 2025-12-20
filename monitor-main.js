@@ -752,10 +752,8 @@ async function runAutomationCycle(node) {
             
             // Check if the removal failed due to an authentication error
             if (removeResult.authError) {
-                log(`MAIN-${node.id}`, 'Authentication failed during app removal. Token is invalid. Pausing automation.');
-                clearInterval(node.automationIntervalId);
-                node.automationIntervalId = null;
-                node.token = null;
+                log(`MAIN-${node.id}`, 'Authentication failed (Token Invalid). Initiating Auto-Reset to Login Screen...');
+                await performNodeReset(node);
                 break; // Exit the loop for this cycle
             } else if (!removeResult.success) {
                 // Log other, non-auth-related errors
@@ -764,6 +762,42 @@ async function runAutomationCycle(node) {
                 log(`AUTO-${node.id}`, `Successfully sent removal request for @@YELLOW@@${mainAppName}##.`);
             }
         }
+    }
+}
+
+/**
+ * Performs a complete reset of the node's session and state.
+ * Clears cookies, storage, resets token, stops automation, updates UI, and reloads the view.
+ * @param {object} node - The node object to reset.
+ */
+async function performNodeReset(node) {
+    log(`MAIN-${node.id}`, 'Performing full session reset...');
+    
+    // 1. Stop Automation & Clear Token
+    if (node.automationIntervalId) {
+        clearInterval(node.automationIntervalId);
+        node.automationIntervalId = null;
+    }
+    node.token = null;
+
+    // 2. Notify UI immediately (Set Dot to Grey)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-node-status', { 
+            nodeId: node.id, 
+            hasToken: false 
+        });
+    }
+
+    // 3. Clear Session & Reload
+    try {
+        const ses = session.fromPartition(`persist:${node.id}`);
+        await ses.clearStorageData({
+            storages: ['appcache', 'cookies', 'filesystem', 'indexdb', 'localstorage', 'shadercache', 'websql', 'serviceworkers', 'cachestorage']
+        });
+        log(`MAIN-${node.id}`, 'Session data cleared. Reloading view to Login screen...');
+        if (node.view) node.view.webContents.reload();
+    } catch (error) {
+        log(`MAIN-${node.id}-Error`, `Failed to reset session: ${error}`);
     }
 }
 
@@ -865,16 +899,7 @@ ipcMain.on('force-refresh-node', async (event, { nodeId }) => {
     }
 
     log('MAIN', `Force refresh requested for node ${node.id}`);
-    try {
-        const ses = session.fromPartition(`persist:${node.id}`);
-        await ses.clearStorageData({
-            storages: ['appcache', 'cookies', 'filesystem', 'indexdb', 'localstorage', 'shadercache', 'websql', 'serviceworkers', 'cachestorage']
-        });
-        log('MAIN', `Session data cleared for ${node.id}. Reloading view...`);
-        node.view.webContents.reload();
-    } catch (error) {
-        log('MAIN-Error', `Failed to force refresh node ${node.id}:`, error);
-    }
+    await performNodeReset(node);
 });
 
 ipcMain.on('log-info-from-preload', (event, { nodeId, message }) => {
