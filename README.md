@@ -6,38 +6,40 @@
 >
 > The application has been successfully tested and is fully functional on both **Legacy FluxOS** and the new **ArcaneOS**.
 >
-> *Note for ArcaneOS users:* Due to significant changes in the new web interface, some visual elements (like menus or sidebars) may not be automatically hidden as they are on Legacy nodes. However, the core functionality-login detection and automated app deletion-works correctly.
+> *Note for ArcaneOS users:* With the new **Monitor Mode**, you can completely hide the node's web interface after authorization, focusing purely on monitoring events via the full-screen log view.
 
-An Electron application to monitor Flux nodes and automatically delete specific running applications.
+Electron-based application for monitoring Flux nodes and automatically removing specific running applications.
 
-![Flux Auto-Deleter Screenshot](assets/screenshot.png)
+![Flux Auto-Deleter Screenshot v0.9.9](assets/screenshot.png)
 
 ## Download & Installation
 
-Latest version: **v0.9.7**
+Latest Version: **v0.9.9**
 
 **[Download from GitHub Releases](https://github.com/SfilD/flux-auto-deleter/releases/latest)**
 
-You can choose between:
-*   **Portable (.zip):** No installation required. Just unzip and run `FluxAutoDeleter.exe`.
+You can choose:
+*   **Portable (.zip):** No installation required. Just unzip and run `FluxAutoDeleter_Portable_0.9.9.exe`.
+*   **Portable (.exe):** Single executable file for quick updates without extracting an archive.
 *   **Installer (.exe):** Installs the application to your system and creates a desktop shortcut.
 
 ## Architecture
 
-The application is built on Electron and has a standard main/renderer process architecture, enhanced with modern security practices.
+The application is built on Electron and follows a standard main/renderer process architecture, reinforced with modern security practices.
 
 1.  **Main Process (`monitor-main.js`)**
     *   Acts as the backend of the application.
     *   Reads configuration from `settings.ini`.
-    *   Handles application lifecycle, window management, and all IPC events.
-    *   Performs node discovery by scanning IPs in parallel.
+    *   Manages application lifecycle, windows, and all IPC events.
+    *   Performs node discovery by scanning IP addresses in parallel.
     *   Creates and manages `BrowserView` instances for each discovered node.
-    *   Runs the core automation cycle for deleting applications.
+    *   Runs the main automation loop for application removal.
     *   Encrypts and stores sensitive tokens in memory using `safeStorage`.
+    *   Broadcasts real-time authorization status updates.
 
 2.  **Renderer Process (UI)**
-    *   **Shell (`shell.html`, `shell-renderer.js`):** The main application window. It provides the tabbed navigation, a quick access toolbar, and the log viewer. It communicates with the main process via a secure `contextBridge` (`window.electronAPI`).
-    *   **Preloader (`preloader.html`, `preloader-renderer.js`):** A simple window shown during the initial node discovery process.
+    *   **Shell (`shell.html`, `shell-renderer.js`):** The main application window. Provides tab navigation with **status color indicators** (Green = OK), a quick access toolbar, and a dual-mode log viewer (**Login/Monitor Mode**). Communicates with the main process via a secure `contextBridge` (`window.electronAPI`).
+    *   **Preloader (`preloader.html`, `preloader-renderer.js`):** A simple window displayed during the initial node discovery phase.
 
 3.  **Preload Scripts**
     *   **`monitor-preload.js`:** Injected into the `BrowserView` of each Flux node. Its primary responsibility is to poll `localStorage` to detect the `zelidauth` token when a user logs in. It then sends this token to the main process to initiate the automation cycle. It also injects CSS to hide extraneous UI elements from the node's webpage.
