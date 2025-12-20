@@ -1,42 +1,45 @@
-# Flux Auto-Deleter - Quick Start Guide
+# Flux Node Manager - User Guide
 
 ## ⚠️ IMPORTANT: DISCLAIMER
 
 **PLEASE READ CAREFULLY BEFORE USING THIS SOFTWARE.**
 
-This software (`FluxAutoDeleter`) is designed to **AUTOMATICALLY PERMANENTLY DELETE** applications and data from your Flux Nodes.
+This software (`FluxNodeManager`) provides tools for **AUTOMATIC MANAGEMENT AND REMOVAL** of applications (containers) from your Flux Nodes.
 
-1.  **Data Loss Risk:** The core function of this tool is to send "remove application" commands. Once deleted, an application **CANNOT BE RECOVERED** by this tool. All data associated with the deleted application may be lost forever.
-2.  **User Responsibility:** You are solely responsible for the correctness of the `settings.ini` configuration file. Specifying an incorrect or too broad prefix in `TargetAppPrefixes` may lead to the unintended deletion of *all* or *critical* applications.
-3.  **No Warranty:** The author(s) and contributors of this software accept **NO LIABILITY** for any direct, indirect, incidental, or consequential damages (including but not limited to data loss, lost profits, or node downtime) arising from the use or inability to use this program.
+1.  **Resource Management:** The core function of this tool is to stop and remove applications based on your policies. A removed container **CANNOT BE RECOVERED** by this tool.
+2.  **Owner Responsibility:** You are solely responsible for the correctness of the `settings.ini` configuration file. Specifying an incorrect prefix in `TargetAppPrefixes` may lead to the unintended stoppage of *all* or *critical* applications.
+3.  **No Warranty:** The author(s) and contributors of this software accept **NO LIABILITY** for any direct, indirect, incidental, or consequential damages (including but not limited to node downtime) arising from the use of this tool.
 
-By running this software, you acknowledge that you understand these risks and agree to use it entirely at your own discretion.
+By running this software, you acknowledge that you are the owner or authorized administrator of these nodes.
 
 ---
 
 ## 1. Purpose
 
-**Flux Auto-Deleter** is a desktop application for monitoring your Flux nodes. It allows you to track activity and, if necessary, automatically remove unwanted applications (according to your blocklist), ensuring control over your hardware resource usage.
+**Flux Node Manager** is a professional desktop application for centralized monitoring and administration of your Flux Nodes. It allows you to:
+*   Monitor authorization status and node availability in real-time.
+*   Automatically enforce security policies (Blocklist) by stopping unwanted or "stuck" applications.
+*   Free up system resources for priority tasks.
 
 ## 2. Installation and Launch
 
 No additional components are required to run the program.
 
 1.  **Portable Version (ZIP Archive):**
-    1.  Download and extract the `FluxAutoDeleter_Portable_X.X.X.zip` archive to a convenient folder (e.g., Desktop).
-    2.  Inside, you will find the executable file `FluxAutoDeleter_Portable_X.X.X.exe` and the configuration file `settings.ini`.
+    1.  Download and extract the `FluxNodeManager_Portable_X.X.X.zip` archive to a convenient folder (e.g., Desktop).
+    2.  Inside, you will find the executable file `FluxNodeManager_Portable_X.X.X.exe` and the configuration file `settings.ini`.
     3.  Configure `settings.ini` (see the "Configuration" section below).
     4.  Run the `.exe` file.
 
 2.  **Portable Version (EXE):**
-    *   Single file `FluxAutoDeleter_Portable_X.X.X.exe`. Useful for updates: simply replace the old `.exe` file with the new one in your application folder.
+    *   Single file `FluxNodeManager_Portable_X.X.X.exe`. Useful for updates: simply replace the old `.exe` file with the new one in your application folder.
 
 3.  **Installer (Setup):**
-    1.  Run the `FluxAutoDeleter_Setup_X.X.X.exe` file and follow the installation instructions.
+    1.  Run the `FluxNodeManager_Setup_X.X.X.exe` file and follow the installation instructions.
     2.  After installation, a shortcut will appear on your desktop.
     3.  The `settings.ini` file will be located in the program's installation folder:
-        *   **Current User:** `%LocalAppData%\Programs\FluxAutoDeleter`
-        *   **All Users:** `%ProgramFiles%\FluxAutoDeleter`
+        *   **Current User:** `%LocalAppData%\Programs\FluxNodeManager`
+        *   **All Users:** `%ProgramFiles%\FluxNodeManager`
 
 ## 3. Interface Overview
 
@@ -180,7 +183,7 @@ The login process depends on your FluxOS version.
         *   Copy the resulting **Signature** from ZelCore and paste it into the **Signature** field in the app.
         *   Click **Login**.
 
-    *   *Note: Other methods (Google, Apple, MetaMask, SSP) may work but have not been explicitly verified with this tool.*
+    *   *Note: Other methods (Google, Apple ID, MetaMask, SSP) may work but have not been explicitly verified with this tool.*
 
 **How to Log Out:**
 1.  Click the button with the **FluxOS logo** (or your avatar) in the **top-right corner** of the window.
@@ -226,7 +229,7 @@ To ensure that the downloaded files are not corrupted or tampered with, you can 
     ```powershell
     Get-FileHash FILENAME -Algorithm SHA256
     ```
-    *(e.g., `Get-FileHash FluxAutoDeleter_Portable_1.0.0.zip`)*
+    *(e.g., `Get-FileHash FluxNodeManager_Portable_1.0.0.zip`)*
 3.  Compare the resulting hash with the one in `checksums.txt`. They must match exactly.
 
 ## 9. Uninstalling
@@ -241,8 +244,8 @@ The application stores session data (node authorization) in a separate system fo
     > **Note:** The script works in both CMD and PowerShell. Administrator privileges are NOT required, but you **must close the application** before running the script.
 
 2.  **Manually:** Delete the following folder:
-    *   **Path:** `%AppData%\flux-session-monitor`
-        *(Usually `C:\Users\USERNAME\AppData\Roaming\flux-session-monitor`)*
+    *   **Path:** `%AppData%\flux-node-manager`
+        *(Usually `C:\Users\USERNAME\AppData\Roaming\flux-node-manager`)*
 
 ## 10. Troubleshooting
 

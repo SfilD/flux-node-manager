@@ -6,7 +6,7 @@ const packageJson = require('./package.json');
 
 const DIST_DIR = path.join(__dirname, 'dist');
 const VERSION = packageJson.version;
-const PRODUCT_NAME = packageJson.build.productName || 'FluxAutoDeleter';
+const PRODUCT_NAME = packageJson.build.productName || 'FluxNodeManager';
 
 // Define output filename
 const OUTPUT_ZIP_NAME = `${PRODUCT_NAME}_Portable_${VERSION}.zip`;

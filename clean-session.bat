@@ -1,5 +1,5 @@
 @echo off
-set "DATA_DIR=%AppData%\flux-session-monitor"
+set "DATA_DIR=%AppData%\flux-node-manager"
 
 if not exist "%DATA_DIR%" (
     echo Data directory not found: "%DATA_DIR%"

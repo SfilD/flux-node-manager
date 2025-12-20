@@ -1,6 +1,6 @@
 [![English](https://img.shields.io/badge/lang-English-blue.svg)](README.md) [![Русский](https://img.shields.io/badge/lang-Русский-red.svg)](README.ru.md)
 
-# flux-auto-deleter
+# Flux Node Manager
 
 > **✅ COMPATIBILITY UPDATE**
 >
@@ -8,18 +8,20 @@
 >
 > *Note for ArcaneOS users:* With the new **Monitor Mode**, you can completely hide the node's web interface after authorization, focusing purely on monitoring events via the full-screen log view.
 
-Electron-based application for monitoring Flux nodes and automatically removing specific running applications.
+**Professional monitoring and management tool for Flux Nodes.**
 
-![Flux Auto-Deleter Screenshot v0.9.9](assets/screenshot.png)
+Flux Node Manager allows operators to monitor the status of their fleet in real-time and automatically enforce application policies (Blocklist) to maintain node health and security.
+
+![Flux Node Manager Screenshot v1.0.0](assets/screenshot.png)
 
 ## Download & Installation
 
-Latest Version: **v0.9.9**
+Latest Version: **v1.0.0**
 
 **[Download from GitHub Releases](https://github.com/SfilD/flux-auto-deleter/releases/latest)**
 
 You can choose:
-*   **Portable (.zip):** No installation required. Just unzip and run `FluxAutoDeleter_Portable_0.9.9.exe`.
+*   **Portable (.zip):** No installation required. Just unzip and run `FluxNodeManager_Portable_1.0.0.exe`.
 *   **Portable (.exe):** Single executable file for quick updates without extracting an archive.
 *   **Installer (.exe):** Installs the application to your system and creates a desktop shortcut.
 
@@ -33,7 +35,7 @@ The application is built on Electron and follows a standard main/renderer proces
     *   Manages application lifecycle, windows, and all IPC events.
     *   Performs node discovery by scanning IP addresses in parallel.
     *   Creates and manages `BrowserView` instances for each discovered node.
-    *   Runs the main automation loop for application removal.
+    *   **Enforces Policies:** Runs the main automation loop to stop applications matching the blocklist.
     *   Encrypts and stores sensitive tokens in memory using `safeStorage`.
     *   Broadcasts real-time authorization status updates.
 
@@ -42,7 +44,7 @@ The application is built on Electron and follows a standard main/renderer proces
     *   **Preloader (`preloader.html`, `preloader-renderer.js`):** A simple window displayed during the initial node discovery phase.
 
 3.  **Preload Scripts**
-    *   **`monitor-preload.js`:** Injected into the `BrowserView` of each Flux node. Its primary responsibility is to poll `localStorage` to detect the `zelidauth` token when a user logs in. It then sends this token to the main process to initiate the automation cycle. It also injects CSS to hide extraneous UI elements from the node's webpage.
+    *   **`monitor-preload.js`:** Injected into the `BrowserView` of each Flux node. Its primary responsibility is to poll `localStorage` to detect the `zelidauth` token when a user logs in. It then sends this token to the main process to initiate the management cycle. It also injects CSS to hide extraneous UI elements from the node's webpage.
     *   **`shell-preload.js` & `preloader-preload.js`:** These scripts securely expose necessary IPC channels (`send`, `on`) to their respective renderer processes using `contextBridge`, in line with modern Electron security standards (`contextIsolation: true`).
 
 ## Used API Endpoints
@@ -50,12 +52,12 @@ The application is built on Electron and follows a standard main/renderer proces
 The application interacts with the following Flux node API endpoints:
 
 -   `GET /apps/listrunningapps`
-    *   **Purpose:** Used both to verify that a node is alive during the discovery phase and to fetch the list of currently running applications for the automation cycle.
+    *   **Purpose:** Used both to verify that a node is alive during the discovery phase and to fetch the list of currently running applications for policy checks.
     *   **Authentication:** Not required.
 
 -   `GET /apps/appremove?appname={appName}`
-    *   **Purpose:** Sends the command to remove a specific application from the node.
-    *   **Authentication:** **Required.** This request uses the `zelidauth` header with the token captured by `monitor-preload.js`.
+    *   **Purpose:** Sends the command to stop/remove a specific application container from the node if it violates the policy.
+    *   **Authentication:** **Required.** This request uses the `zelidauth` header with the token captured by `monitor-preload.js` to ensure only the node owner can perform this action.
 
 ## Troubleshooting
 
@@ -65,14 +67,14 @@ The application interacts with the following Flux node API endpoints:
         2.  Check your internet connection.
         3.  Ensure that a firewall or antivirus is not blocking the application's network requests.
 
--   **Problem: Automation cycle does not start for a specific node.**
-    *   **Solution:** Ensure you have successfully logged into the Flux node's UI within the corresponding tab in the application. The automation cycle only begins after a valid `zelidauth` token is detected.
+-   **Problem: Management cycle does not start for a specific node.**
+    *   **Solution:** Ensure you have successfully logged into the Flux node's UI within the corresponding tab in the application. The management cycle only begins after a valid `zelidauth` token is detected.
 
 -   **Problem: The application crashes or behaves unexpectedly.**
     *   **Solution:** Check the `session.log` file located in the application's root directory. For more detailed diagnostics, set `Debug = true` in `settings.ini` and restart the application to generate more verbose logs.
 
 -   **Problem: Need to reset all application data/cache.**
-    *   **Solution:** Run the included `clean-session.bat` script. This will completely remove the application's data directory (`%AppData%\flux-session-monitor`), effectively resetting the app to its initial state.
+    *   **Solution:** Run the included `clean-session.bat` script. This will completely remove the application's data directory (`%AppData%\flux-node-manager`), effectively resetting the app to its initial state.
 
 ## Development Workflow
 

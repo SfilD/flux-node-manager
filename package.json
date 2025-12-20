@@ -1,7 +1,7 @@
 {
-  "name": "flux-session-monitor",
-  "version": "0.9.9",
-  "description": "Automated tool for managing Flux Nodes applications. Developed by SfilD Labs with Gemini AI assistance.",
+  "name": "flux-node-manager",
+  "version": "1.0.0",
+  "description": "Professional monitoring and management tool for Flux Nodes. Developed by SfilD Labs with Gemini AI assistance.",
   "main": "monitor-main.js",
   "scripts": {
     "start": "electron .",
@@ -9,8 +9,8 @@
     "lint": "eslint ."
   },
   "build": {
-    "appId": "com.flux.autodeleter",
-    "productName": "FluxAutoDeleter",
+    "appId": "com.flux.nodemanager",
+    "productName": "FluxNodeManager",
     "extraFiles": [
       {
         "from": "settings.dist.ini",

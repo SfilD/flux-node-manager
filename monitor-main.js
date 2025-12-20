@@ -806,8 +806,8 @@ ipcMain.on('show-about', async () => {
     const appVersion = app.getVersion(); // Get version from package.json directly
     const { response } = await dialog.showMessageBox(mainWindow, {
         type: 'info',
-        title: 'About Flux Auto-Deleter',
-        message: 'Flux Auto-Deleter',
+        title: 'About Flux Node Manager',
+        message: 'Flux Node Manager',
         detail: `Version: ${appVersion}\nAuthor: ${require('./package.json').author}\nDescription: ${require('./package.json').description}`,
         buttons: ['OK', 'View License'],
         defaultId: 0,

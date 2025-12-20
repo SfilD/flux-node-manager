@@ -178,7 +178,7 @@ window.electronAPI.on('initialize-ui', (data) => {
     const { appVersion, nodes, activeId, debug, fontName, fontSize, logHistory } = data;
     
     if (appVersion) {
-        document.title = `Flux Auto-Deleter v${appVersion}`;
+        document.title = `Flux Node Manager v${appVersion}`;
     }
 
     isDebugMode = debug;
