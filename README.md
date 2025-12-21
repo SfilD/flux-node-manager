@@ -6,7 +6,7 @@
 >
 > The application has been successfully tested and is fully functional on both **Legacy FluxOS** and the new **ArcaneOS**.
 >
-> *Note for ArcaneOS users:* With the new **Monitor Mode**, you can completely hide the node's web interface after authorization, focusing purely on monitoring events via the full-screen log view.
+> *Note for users:* **Monitor Mode** can fully hide the node's web interface on both **ArcaneOS** and **Legacy FluxOS**. This allows you to focus purely on monitoring events via the full-screen log view.
 
 **Professional monitoring and management tool for Flux Nodes.**
 
@@ -18,7 +18,7 @@ Flux Node Manager allows operators to monitor the status of their fleet in real-
 
 Latest Version: **v1.0.0**
 
-**[Download from GitHub Releases](https://github.com/SfilD/flux-auto-deleter/releases/latest)**
+**[Download from GitHub Releases](https://github.com/SfilD/flux-node-manager/releases/latest)**
 
 You can choose:
 *   **Portable (.zip):** No installation required. Just unzip and run `FluxNodeManager_Portable_1.0.0.exe`.
@@ -84,15 +84,23 @@ This section describes the unique development and testing environment for the pr
 
 -   **Execution and Testing Environment:** For actual execution and testing, the project files are copied to a VMware virtual machine running **Windows 10 Pro**.
 
--   **Working Directory on Windows:** On the Windows VM, the project is located at `C:\Projects\flux-auto-deleter\`.
+- **Working Directory on Windows:** On the Windows VM, the project is located at `C:\Projects\flux-node-manager\`.
+
+
 
 **Key Point:** All runtime commands (e.g., `npm start`) must be executed **only within the Windows 10 Pro environment** on the virtual machine, not in WSL.
 
+
+
 ## Feedback & Bug Reports
+
+
 
 If you encounter any bugs, errors, or have suggestions for new features, please open an issue on our GitHub repository. This is the most effective way to reach the developer.
 
-*   **Report a Bug / Request Feature:** [GitHub Issues](https://github.com/SfilD/flux-auto-deleter/issues)
+
+
+*   **Report a Bug / Request Feature:** [GitHub Issues](https://github.com/SfilD/flux-node-manager/issues)
 
 ## Support & Donations
 
