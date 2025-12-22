@@ -83,6 +83,7 @@ const LOG_FILE = config.General.LogFile || 'session.log';
 const FONT_NAME = config.General.FontName || 'Hack';
 const FONT_SIZE = parseInt(config.General.FontSize) || 10;
 const MAX_LOG_HISTORY = parseInt(config.General.MaxLogHistory) || 1000;
+const MAX_LOG_FILE_SIZE_BYTES = (parseInt(config.General.MaxLogFileSizeMB) || 10) * 1024 * 1024;
 
 // --- Global State ---
 let preloaderWindow = null;
@@ -136,7 +137,71 @@ function dispatchLog(message, isDebug = false) {
     
     // 2. Write to file
     if (logStream) {
-        logStream.write(`[${new Date().toISOString()}] ${message}\n`);
+        const logFilePath = path.join(BASE_PATH, LOG_FILE);
+        
+        // Periodic check of file size for rotation
+        try {
+            if (fs.existsSync(logFilePath)) {
+                const stats = fs.statSync(logFilePath);
+                if (stats.size >= MAX_LOG_FILE_SIZE_BYTES) {
+                    rotateLogFile(logFilePath);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to check log file size for rotation:', err);
+        }
+
+        if (logStream) { // Check again as it might have been reset in rotateLogFile
+            logStream.write(`[${new Date().toISOString()}] ${message}\n`);
+        }
+    }
+}
+
+/**
+ * Rotates the log file by renaming the current one to .old and opening a new stream.
+ * @param {string} logFilePath The full path to the current log file.
+ */
+function rotateLogFile(logFilePath) {
+    try {
+        if (logStream) {
+            logStream.end();
+            logStream = null;
+        }
+
+        const oldLogPath = `${logFilePath}.old`;
+        if (fs.existsSync(oldLogPath)) {
+            try {
+                fs.unlinkSync(oldLogPath);
+            } catch (unlinkErr) {
+                // If we can't delete the .old file, we can't rotate. 
+                // We should just re-open the current file and continue.
+                console.error('Log Rotation Error: Could not delete old log file.', unlinkErr);
+                throw unlinkErr; 
+            }
+        }
+        
+        fs.renameSync(logFilePath, oldLogPath);
+        
+        // Success: Start fresh file
+        logStream = fs.createWriteStream(logFilePath, { flags: 'w' });
+        
+        const rotationMsg = `[SYSTEM] Log file reached maximum size and was rotated. Previous logs saved to ${LOG_FILE}.old`;
+        // We write directly to the stream here, assuming success
+        logStream.write(`[${new Date().toISOString()}] ${rotationMsg}\n`);
+        
+    } catch (err) {
+        console.error('Critical error during log rotation:', err);
+        // RECOVERY: If rotation failed, try to re-open the ORIGINAL file in Append mode
+        // so we don't lose logging capability.
+        try {
+            if (!logStream) {
+                logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+                logStream.write(`[${new Date().toISOString()}] [SYSTEM] Log rotation FAILED (File busy?). Logging continues in the same file.\n`);
+            }
+        } catch (recoveryErr) {
+            console.error('FATAL: Could not recover log stream after failed rotation:', recoveryErr);
+            logStream = null;
+        }
     }
 }
 

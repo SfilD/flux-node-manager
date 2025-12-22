@@ -12,16 +12,16 @@
 
 Flux Node Manager allows operators to monitor the status of their fleet in real-time and automatically enforce application policies (Blocklist) to maintain node health and security.
 
-![Flux Node Manager Screenshot v1.0.0](assets/screenshot.png)
+![Flux Node Manager Screenshot v1.1.0](assets/screenshot.png)
 
 ## Download & Installation
 
-Latest Version: **v1.0.0**
+Latest Version: **v1.1.0**
 
 **[Download from GitHub Releases](https://github.com/SfilD/flux-node-manager/releases/latest)**
 
 You can choose:
-*   **Portable (.zip):** No installation required. Just unzip and run `FluxNodeManager_Portable_1.0.0.exe`.
+*   **Portable (.zip):** No installation required. Just unzip and run `FluxNodeManager_Portable_x.y.z.exe`.
 *   **Portable (.exe):** Single executable file for quick updates without extracting an archive.
 *   **Installer (.exe):** Installs the application to your system and creates a desktop shortcut.
 

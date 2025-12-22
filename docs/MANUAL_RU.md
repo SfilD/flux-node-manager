@@ -26,16 +26,16 @@
 Для работы программы **не требуется** установка дополнительных компонентов.
 
 1.  **Portable-версия (ZIP-архив):**
-    1.  Скачайте и распакуйте архив `FluxNodeManager_Portable_X.X.X.zip` в удобную папку (например, на Рабочий стол).
-    2.  Внутри вы найдёте файл запуска `FluxNodeManager_Portable_X.X.X.exe` и файл настроек `settings.ini`.
+    1.  Скачайте и распакуйте архив `FluxNodeManager_Portable_x.y.z.zip` в удобную папку (например, на Рабочий стол).
+    2.  Внутри вы найдёте файл запуска `FluxNodeManager_Portable_x.y.z.exe` и файл настроек `settings.ini`.
     3.  Настройте `settings.ini` (см. раздел "Настройка").
     4.  Запустите `.exe` файл.
 
 2.  **Portable-версия (EXE):**
-    *   Одиночный файл `FluxNodeManager_Portable_X.X.X.exe`. Удобен для обновления: просто замените старый `.exe` файл новым в папке с программой.
+    *   Одиночный файл `FluxNodeManager_Portable_x.y.z.exe`. Удобен для обновления: просто замените старый `.exe` файл новым в папке с программой.
 
 3.  **Установщик (Setup):**
-    *   Запустите файл `FluxNodeManager_Setup_X.X.X.exe` и следуйте инструкциям установки.
+    *   Запустите файл `FluxNodeManager_Setup_x.y.z.exe` и следуйте инструкциям установки.
     2.  После установки ярлык появится на рабочем столе.
     3.  Файл настроек `settings.ini` будет находиться в папке установки программы:
         *   **Только для меня:** `%LocalAppData%\Programs\FluxNodeManager`
@@ -149,6 +149,12 @@ TargetAppPrefixes = StuckContainer,MaliciousApp,TestApp
 AutomationIntervalSeconds = 300
 ```
 
+#### `MaxLogFileSizeMB`
+Максимальный размер файла логов в мегабайтах. При достижении этого лимита файл архивируется (переименовывается в `.old` и создается новый). Мин. значение: 1.
+```ini
+MaxLogFileSizeMB = 10
+```
+
 ## 6. Вход в систему (Логин)
 
 Чтобы приложение могло управлять узлом, вы должны авторизоваться в веб-интерфейсе Flux.
@@ -229,7 +235,7 @@ AutomationIntervalSeconds = 300
     ```powershell
     Get-FileHash ИМЯ_ФАЙЛА -Algorithm SHA256
     ```
-    *(Например: `Get-FileHash FluxNodeManager_Portable_1.0.0.zip`)*
+    *(Например: `Get-FileHash FluxNodeManager_Portable_x.y.z.zip`)*
 3.  Сравните полученный хэш со строкой в `checksums.txt`. Они должны совпадать.
 
 ## 9. Деинсталляция приложения

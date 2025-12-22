@@ -26,16 +26,16 @@ By running this software, you acknowledge that you are the owner or authorized a
 No additional components are required to run the program.
 
 1.  **Portable Version (ZIP Archive):**
-    1.  Download and extract the `FluxNodeManager_Portable_X.X.X.zip` archive to a convenient folder (e.g., Desktop).
-    2.  Inside, you will find the executable file `FluxNodeManager_Portable_X.X.X.exe` and the configuration file `settings.ini`.
+    1.  Download and extract the `FluxNodeManager_Portable_x.y.z.zip` archive to a convenient folder (e.g., Desktop).
+    2.  Inside, you will find the executable file `FluxNodeManager_Portable_x.y.z.exe` and the configuration file `settings.ini`.
     3.  Configure `settings.ini` (see the "Configuration" section below).
     4.  Run the `.exe` file.
 
 2.  **Portable Version (EXE):**
-    *   Single file `FluxNodeManager_Portable_X.X.X.exe`. Useful for updates: simply replace the old `.exe` file with the new one in your application folder.
+    *   Single file `FluxNodeManager_Portable_x.y.z.exe`. Useful for updates: simply replace the old `.exe` file with the new one in your application folder.
 
 3.  **Installer (Setup):**
-    1.  Run the `FluxNodeManager_Setup_X.X.X.exe` file and follow the installation instructions.
+    1.  Run the `FluxNodeManager_Setup_x.y.z.exe` file and follow the installation instructions.
     2.  After installation, a shortcut will appear on your desktop.
     3.  The `settings.ini` file will be located in the program's installation folder:
         *   **Current User:** `%LocalAppData%\Programs\FluxNodeManager`
@@ -149,6 +149,12 @@ The interval in seconds between checks. Recommended value: 300 (5 minutes).
 AutomationIntervalSeconds = 300
 ```
 
+#### `MaxLogFileSizeMB`
+The maximum size of the log file in megabytes. When reached, the file is rotated (renamed to `.old` and a new one is started). Min value: 1.
+```ini
+MaxLogFileSizeMB = 10
+```
+
 ## 6. Login
 
 To allow the application to manage a node, you must authorize yourself in the Flux web interface.
@@ -229,7 +235,7 @@ To ensure that the downloaded files are not corrupted or tampered with, you can 
     ```powershell
     Get-FileHash FILENAME -Algorithm SHA256
     ```
-    *(e.g., `Get-FileHash FluxNodeManager_Portable_1.0.0.zip`)*
+    *(e.g., `Get-FileHash FluxNodeManager_Portable_x.y.z.zip`)*
 3.  Compare the resulting hash with the one in `checksums.txt`. They must match exactly.
 
 ## 9. Uninstalling
