@@ -12,11 +12,11 @@
 
 Flux Node Manager позволяет операторам отслеживать статус своего парка нод в реальном времени и автоматически применять политики безопасности (черные списки приложений) для поддержания здоровья системы.
 
-![Скриншот Flux Node Manager v1.1.0](assets/screenshot.png)
+![Скриншот Flux Node Manager v1.2.0](assets/screenshot.png)
 
 ## Скачивание и Установка
 
-Последняя версия: **v1.1.0**
+Последняя версия: **v1.2.0**
 
 **[Скачать из GitHub Releases](https://github.com/SfilD/flux-node-manager/releases/latest)**
 

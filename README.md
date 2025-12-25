@@ -12,11 +12,11 @@
 
 Flux Node Manager allows operators to monitor the status of their fleet in real-time and automatically enforce application policies (Blocklist) to maintain node health and security.
 
-![Flux Node Manager Screenshot v1.1.0](assets/screenshot.png)
+![Flux Node Manager Screenshot v1.2.0](assets/screenshot.png)
 
 ## Download & Installation
 
-Latest Version: **v1.1.0**
+Latest Version: **v1.2.0**
 
 **[Download from GitHub Releases](https://github.com/SfilD/flux-node-manager/releases/latest)**
 
