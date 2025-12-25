@@ -158,9 +158,9 @@ async function runAutomationCycle(node) {
                 await performNodeReset(node);
                 break;
             } else if (!removeResult.success) {
-                logger.log(`API-${node.id}-Error`, `Failed to clean up: ${removeResult.error}`);
+                logger.log(`API-${node.id}-Error`, `Failed to clean up app @@YELLOW@@${mainAppName}##: ${removeResult.error}`);
             } else {
-                logger.log(`AUTO-${node.id}`, `Successfully sent cleanup request for ${mainAppName}.`);
+                logger.log(`AUTO-${node.id}`, `Successfully sent cleanup request for @@YELLOW@@${mainAppName}##.`);
             }
         }
     }
