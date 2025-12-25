@@ -15,8 +15,8 @@ const translations = {
                 buttons: ['Open Settings', 'Open Docs', 'Exit']
             },
             about: {
-                title: "About Flux Node Manager",
-                description: "Professional monitoring and management tool for Flux Nodes.\nDeveloped by SfilD Labs with Gemini AI assistance.",
+                title: 'About Flux Node Manager',
+                description: 'Professional monitoring and management tool for Flux Nodes.\nDeveloped by SfilD Labs with Gemini AI assistance.',
                 buttons: ['OK', 'View License']
             }
         }
@@ -24,21 +24,21 @@ const translations = {
     ru: {
         dialogs: {
             criticalError: {
-                title: "Критическая ошибка",
-                message: "Произошла критическая, неустранимая ошибка. Приложение будет закрыто.\n\nДетали ошибки:\n"
+                title: 'Критическая ошибка',
+                message: 'Произошла критическая, неустранимая ошибка. Приложение будет закрыто.\n\nДетали ошибки:\n'
             },
             networkError: {
-                title: "Ошибка сети",
-                message: "Отсутствует подключение к интернету или ошибка DNS. Пожалуйста, проверьте настройки сети."
+                title: 'Ошибка сети',
+                message: 'Отсутствует подключение к интернету или ошибка DNS. Пожалуйста, проверьте настройки сети.'
             },
             noNodes: {
-                title: "Узлы не найдены",
-                message: "Активные узлы Flux не найдены. Пожалуйста, проверьте следующее:\n1. IP-адреса в файле settings.ini указаны верно.\n2. Ваше интернет-соединение стабильно.\n3. Брандмауэр или антивирус не блокируют исходящие соединения приложения.",
+                title: 'Узлы не найдены',
+                message: 'Активные узлы Flux не найдены. Пожалуйста, проверьте следующее:\n1. IP-адреса в файле settings.ini указаны верно.\n2. Ваше интернет-соединение стабильно.\n3. Брандмауэр или антивирус не блокируют исходящие соединения приложения.',
                 buttons: ['Открыть настройки', 'Открыть инструкцию', 'Выход']
             },
             about: {
-                title: "О программе Flux Node Manager",
-                description: "Профессиональный инструмент мониторинга и управления для узлов Flux.\nРазработано SfilD Labs при поддержке Gemini AI.",
+                title: 'О программе Flux Node Manager',
+                description: 'Профессиональный инструмент мониторинга и управления для узлов Flux.\nРазработано SfilD Labs при поддержке Gemini AI.',
                 buttons: ['OK', 'Лицензия']
             }
         }
