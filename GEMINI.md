@@ -55,9 +55,29 @@ npm start
 ```
 
 **Building for Distribution:**
+*Note: Must be executed in the Windows environment.*
 ```bash
 npm run dist
 ```
+
+## Release Workflow
+
+**Prerequisites:**
+*   GitHub CLI (`gh`) is installed and authenticated in WSL (`gh auth status` to check).
+*   Active account: **SfilD**.
+
+**Process:**
+1.  **Preparation (WSL):**
+    *   Bump version in `package.json`.
+    *   Run `node sync-version.js` to update READMEs.
+    *   Commit and push changes to `main`.
+2.  **Build (Windows VM):**
+    *   Run `npm run dist` to generate artifacts in `dist/`.
+3.  **Publish (WSL):**
+    *   Use `gh` to create a tag and upload assets from the `dist/` directory.
+    ```bash
+    gh release create vX.X.X dist/FluxNodeManager_Setup_X.X.X.exe dist/FluxNodeManager_Portable_X.X.X.exe dist/FluxNodeManager_Portable_X.X.X.zip dist/checksums.txt --title "vX.X.X - <Short Description>" --notes "<Detailed Release Notes>"
+    ```
 
 ## Development Conventions
 
